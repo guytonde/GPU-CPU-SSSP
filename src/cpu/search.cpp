@@ -6,10 +6,9 @@
 #include <fstream>
 #include <sstream>
 #include "search.hpp"
+#include "../common/utils.hpp"
 
 using namespace std;
-
-const int INF = numeric_limits<int>::max();
 
 vector<int> dijkstra(const Graph& graph, int source) {
     int n = graph.size();
@@ -196,17 +195,6 @@ vector<int> astar(const Graph& graph, int source, int target, const vector<int>&
 
 /**** Utility Functions ****/
 
-void print_distances(const vector<int>& distances) {
-    for (int i = 0; i < distances.size(); i++) {
-        if (distances[i] == INF) {
-            cout << "Vertex " << i << ": INF" << endl;
-        } else if (distances[i] == -INF) {
-            cout << "Vertex " << i << ": -INF (negative cycle)" << endl;
-        } else {
-            cout << "Vertex " << i << ": " << distances[i] << endl;
-        }
-    }
-}
 
 bool has_negative_cycle(const Graph& graph, int source) {
     vector<int> dist = bellman_ford(graph, source);
@@ -241,7 +229,7 @@ Graph load_graph_from_file(const string& filename, int num_vertices) {
 }
 
 void print_graph(const Graph& graph) {
-    for (int u = 0; u < graph.size(); u++) {
+    for (size_t u = 0; u < graph.size(); u++) {
         cout << "Vertex " << u << ": ";
         for (const Edge& edge : graph[u]) {
             cout << "(" << edge.to << ", " << edge.weight << ") ";
@@ -251,17 +239,17 @@ void print_graph(const Graph& graph) {
 }
 
 void print_all_pairs_distances(const vector<vector<int>>& distances) {
-    int n = distances.size();
+    size_t n = distances.size();
     cout << "All-pairs shortest distances:" << endl;
     cout << "   ";
-    for (int j = 0; j < n; j++) {
+    for (size_t j = 0; j < n; j++) {
         cout << setw(8) << j;
     }
     cout << endl;
     
-    for (int i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++) {
         cout << setw(2) << i << ":";
-        for (int j = 0; j < n; j++) {
+        for (size_t j = 0; j < n; j++) {
             if (distances[i][j] == INF) {
                 cout << setw(8) << "INF";
             } else if (distances[i][j] == -INF) {
@@ -281,7 +269,7 @@ void print_path(const vector<int>& path) {
     }
     
     cout << "Path: ";
-    for (int i = 0; i < path.size(); i++) {
+    for (size_t i = 0; i < path.size(); i++) {
         cout << path[i];
         if (i < path.size() - 1) {
             cout << " -> ";
@@ -293,13 +281,13 @@ void print_path(const vector<int>& path) {
 bool is_connected(const Graph& graph) {
     if (graph.empty()) return true;
     
-    int n = graph.size();
+    size_t n = graph.size();
     vector<bool> visited(n, false);
     queue<int> q;
     
     q.push(0);
     visited[0] = true;
-    int count = 1;
+    size_t count = 1;
     
     while (!q.empty()) {
         int u = q.front();
@@ -317,3 +305,5 @@ bool is_connected(const Graph& graph) {
     
     return count == n;
 }
+
+// print_distances and print_results_info are provided by ../common/utils.hpp
