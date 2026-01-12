@@ -1,114 +1,79 @@
-CXX = g++
-NVCC = nvcc
-HARDENING_FLAGS = -D_FORTIFY_SOURCE=2 -fstack-protector-strong -fstack-clash-protection -fcf-protection=full -fPIE
-CXXFLAGS = -O2 -std=c++17 -Wall $(HARDENING_FLAGS)
-NVCCFLAGS = -O2 -std=c++17 -arch=sm_70 -DUSE_GPU
+# ====== Config ======
+CXX      := g++
+CXXFLAGS := -std=c++17 -O3 -Wall -Wextra -march=native
+OMPFLAGS := -fopenmp
 
-# Targets
-GEN_GRAPH = bin/generate_graph
-SSSP_CPU = bin/sssp_cpu
-SSSP_GPU = bin/sssp_gpu
+# Directories
+SRC_DIR    := src
+INCLUDE_DIR:= include
+TOOLS_DIR  := tools
+BIN_DIR    := bin
+BUILD_DIR  := build
 
 # Source files
-GEN_GRAPH_SRC = graphs/generate_graphs.cpp
-CPU_SRCS = src/cpu/search.cpp src/main.cpp
-GPU_SRCS = src/gpu/search.cu src/cpu/search.cpp src/main.cpp
+CPU_SERIAL_SRC    := $(SRC_DIR)/cpu_serial.cpp
+CPU_PARALLEL_SRC  := $(SRC_DIR)/cpu_parallel.cpp
+MAIN_SRC          := $(SRC_DIR)/main.cpp
+GEN_GRAPH_SRC     := $(TOOLS_DIR)/generate_graphs.cpp
 
-# Build directory
-BUILD_DIR = build
-BIN_DIR = bin
+# Objects
+CPU_SERIAL_OBJ    := $(BUILD_DIR)/cpu_serial.o
+CPU_PARALLEL_OBJ  := $(BUILD_DIR)/cpu_parallel.o
+MAIN_OBJ          := $(BUILD_DIR)/main.o
+GEN_GRAPH_OBJ     := $(BUILD_DIR)/generate_graphs.o
 
-# Create directories
-$(shell mkdir -p $(BUILD_DIR) $(BIN_DIR))
+# Binaries
+BENCHMARK_BIN := $(BIN_DIR)/benchmark
+GEN_GRAPH_BIN := $(BIN_DIR)/gen_graph
 
-.PHONY: all clean graph cpu gpu test help test-cpu test-gpu test-all
+# Default target
+.PHONY: all
+all: dirs $(BENCHMARK_BIN) $(GEN_GRAPH_BIN)
 
-all: cpu gpu
+# Create dirs
+.PHONY: dirs
+dirs:
+	@mkdir -p $(BIN_DIR) $(BUILD_DIR)
 
-help:
-	@echo "Targets:"
-	@echo "  make cpu                 - Build CPU version"
-	@echo "  make gpu                 - Build GPU version (requires CUDA)"
-	@echo "  make all                 - Build both CPU and GPU versions"
-	@echo "  make graph V=N E=M ...   - Generate a test graph"
-	@echo "  make test-cpu            - Build and test CPU version"
-	@echo "  make test-gpu            - Build and test GPU version"
-	@echo "  make test-all            - Build and test both CPU and GPU versions"
-	@echo "  make clean               - Remove all build artifacts"
-	@echo ""
-	@echo "Graph generation:"
-	@echo "  make graph V=1000 E=5000 MINW=1 MAXW=100 OUT=graph.txt"
-	@echo ""
-	@echo "Run examples:"
-	@echo "  ./bin/sssp_cpu dijkstra graph.txt 1000 0"
-	@echo "  ./bin/sssp_cpu bellman-ford graph.txt 1000 0"
-	@echo "  ./bin/sssp_cpu bfs graph.txt 1000 0"
-	@echo "  ./bin/sssp_cpu johnson graph.txt 1000"
-	@echo "  ./bin/sssp_gpu gpu-dijkstra graph.txt 1000 0"
+# ====== Compilation rules ======
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | dirs
+	$(CXX) $(CXXFLAGS) $(OMPFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
-# Generate graph generator
-$(GEN_GRAPH): $(GEN_GRAPH_SRC)
-	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+$(BUILD_DIR)/main.o: $(MAIN_SRC) | dirs
+	$(CXX) $(CXXFLAGS) $(OMPFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
-# Build CPU version
-cpu: $(SSSP_CPU)
+$(BUILD_DIR)/generate_graphs.o: $(GEN_GRAPH_SRC) | dirs
+	$(CXX) $(CXXFLAGS) -I$(INCLUDE_DIR) -c $< -o $@
 
-$(SSSP_CPU): $(CPU_SRCS)
-	@mkdir -p $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+# ====== Link binaries ======
+$(BENCHMARK_BIN): $(MAIN_OBJ) $(CPU_SERIAL_OBJ) $(CPU_PARALLEL_OBJ) | dirs
+	$(CXX) $(CXXFLAGS) $(OMPFLAGS) $^ -I$(INCLUDE_DIR) -o $@
+	@echo "Built $@"
 
-# Build GPU version
-gpu: $(SSSP_GPU)
+$(GEN_GRAPH_BIN): $(GEN_GRAPH_OBJ) | dirs
+	$(CXX) $(CXXFLAGS) $^ -o $@
+	@echo "Built $@"
 
-$(SSSP_GPU): $(GPU_SRCS)
-	@mkdir -p $(BIN_DIR)
-	$(NVCC) $(NVCCFLAGS) -o $@ $^
+# ====== Convenience targets ======
 
-# Generate a test graph
-graph: $(GEN_GRAPH)
-	@if [ -z "$(V)" ] || [ -z "$(E)" ] || [ -z "$(MINW)" ] || [ -z "$(MAXW)" ] || [ -z "$(OUT)" ]; then \
-		echo "Usage: make graph V=<vertices> E=<edges> MINW=<min_weight> MAXW=<max_weight> OUT=<output_file>"; \
-		exit 1; \
-	fi
-	./$(GEN_GRAPH) $(V) $(E) $(MINW) $(MAXW) $(OUT)
-	@echo "Graph saved to $(OUT)"
+.PHONY: benchmark gen_graph
+benchmark: $(BENCHMARK_BIN)
+gen_graph: $(GEN_GRAPH_BIN)
 
-# Generate a default test graph for testing
-graphs/generated/test_graph.txt: $(GEN_GRAPH)
-	@mkdir -p graphs/generated
-	./$(GEN_GRAPH) 100 500 1 50 graphs/generated/test_graph.txt
+.PHONY: quicktest
+quicktest: all
+	@$(GEN_GRAPH_BIN) 100 500 1 10 graphs/generated/tiny.txt
+	@$(BENCHMARK_BIN) graphs/generated/tiny.txt 0
 
-# Test CPU algorithms
-test-cpu: cpu graphs/generated/test_graph.txt
-	@echo "Testing CPU Dijkstra..."
-	./$(SSSP_CPU) dijkstra graphs/generated/test_graph.txt 100 0
-	@echo ""
-	@echo "Testing CPU Bellman-Ford..."
-	./$(SSSP_CPU) bellman-ford graphs/generated/test_graph.txt 100 0
-	@echo ""
-	@echo "Testing CPU BFS..."
-	./$(SSSP_CPU) bfs graphs/generated/test_graph.txt 100 0
+.PHONY: bench
+bench: all
+	@chmod +x $(TOOLS_DIR)/run_benchmarks.sh
+	@$(TOOLS_DIR)/run_benchmarks.sh
 
-# Test GPU algorithms
-test-gpu: gpu graphs/generated/test_graph.txt
-	@echo "Testing GPU Dijkstra..."
-	./$(SSSP_GPU) gpu-dijkstra graphs/generated/test_graph.txt 100 0
-	@echo ""
-	@echo "Testing GPU Bellman-Ford..."
-	./$(SSSP_GPU) gpu-bellman-ford graphs/generated/test_graph.txt 100 0
-	@echo ""
-	@echo "Testing GPU BFS..."
-	./$(SSSP_GPU) gpu-bfs graphs/generated/test_graph.txt 100 0
-
-# Test all algorithms
-test-all: cpu gpu graphs/generated/test_graph.txt
-	@echo "Running tests and generating summary table..."
-	@printf "%-20s | %-12s | %-12s | %-8s\n" "Algorithm" "CPU Time(us)" "GPU Time(us)" "Diffs"
-	@printf "%-20s-+-%-12s-+-%-12s-+-%-8s\n" "--------------------" "------------" "------------" "--------"
-	@tools/test_summary.sh
-
+.PHONY: clean
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR) graphs/generated/
-	find . -name "*.o" -delete
-	find . -name "*.a" -delete
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
+
+.PHONY: distclean
+distclean: clean
+	rm -rf graphs/generated results
