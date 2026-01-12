@@ -65,6 +65,38 @@ struct Graph {
         return g;
     }
 
+    Graph Graph::expandForBFS() const {
+        Graph expanded(n);
+        expanded.adj.assign(n, {});  // start with original size
+        expanded.m = 0;
+
+        int next = n;
+
+        for (int u = 0; u < n; ++u) {
+            for (auto &e : adj[u]) {
+                int v = e.to;
+                int w = e.weight;
+                if (w == 1) {
+                    expanded.addEdge(u, v, 1);
+                } else {
+                    int cur = u;
+                    for (int i = 0; i < w - 1; ++i) {
+                        int dummy = next++;
+                        if ((int)expanded.adj.size() <= dummy)
+                            expanded.adj.push_back({});
+                        expanded.addEdge(cur, dummy, 1);
+                        cur = dummy;
+                    }
+                    expanded.addEdge(cur, v, 1);
+                }
+            }
+        }
+
+        expanded.n = next;
+        return expanded;
+    }
+
+
     // apparently Compressed Sparse Row format is better for GPU
     struct CSRFormat {
         vector<int> rowPtr;

@@ -87,7 +87,43 @@ Result BellmanFordSerial::solve(const Graph& g, int source) {
     
 //     return {dist, elapsed, "BFS", "CPU Serial"};
 // }
-
+class BFSExpanded : public SSSPSolver {
+public:
+    Result solve(const Graph& g, int source) override {
+        auto start = std::chrono::high_resolution_clock::now();
+        
+        Graph expanded = g.expandForBFS(g);
+        std::vector<Weight> dist(expanded.n, INF);
+        std::queue<int> q;
+        dist[source] = 0;
+        q.push(source);
+        
+        while (!q.empty()) {
+            int u = q.front();
+            q.pop();
+            
+            for (const auto& edge : expanded.adj[u]) {
+                if (dist[edge.to] == INF) {
+                    dist[edge.to] = dist[u] + 1;
+                    q.push(edge.to);
+                }
+            }
+        }
+        
+        std::vector<Weight> result_dist(g.n);
+        for (int i = 0; i < g.n; i++) {
+            result_dist[i] = dist[i];
+        }
+        
+        auto end = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double, std::milli>(end - start).count();
+        
+        return {result_dist, elapsed, "BFS (Expanded)", "CPU Serial"};
+    }
+    
+    std::string getName() override { return "BFS (Expanded)"; }
+    std::string getType() override { return "CPU Serial"; }
+};
 
 Result SPFASerial::solve(const Graph& g, int source) {
     auto start = std::chrono::high_resolution_clock::now();

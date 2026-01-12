@@ -41,6 +41,8 @@
 *.dwo
 
 bin/
+build/
+results/
 .vscode/
 graphs/generated/*
 tools/*.csv
