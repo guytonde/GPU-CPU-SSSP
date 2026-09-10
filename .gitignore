@@ -44,5 +44,5 @@ bin/
 build/
 results/
 .vscode/
-graphs/generated/*
-tools/*.csv
+results/
+graphs/
