@@ -11,8 +11,8 @@ using Weight = int32_t;
 // Half of INT32_MAX so that dist[u] + w never overflows during relaxation.
 constexpr Weight kInf = 0x3fffffff;
 
-// Compressed sparse row. Edges of vertex u live at indices
-// [offsets[u], offsets[u+1]) of targets/weights.
+// compressed sparse row so edges of vertex u live at indices
+// [offsets[u], offsets[u+1]) of targets/weights
 struct Graph {
     int n = 0;
     std::vector<int> offsets;
@@ -25,12 +25,10 @@ struct Graph {
     Weight max_weight() const;
     double avg_degree() const;
 
-    // Row index of every edge. Needed by edge-parallel GPU kernels, which
-    // cannot recover the source vertex from the CSR arrays alone.
     std::vector<int> edge_sources() const;
 };
 
-// Intermediate form produced by the generators and by the text reader.
+// Intermediate form used by the generators and the text reader
 struct EdgeList {
     int n = 0;
     std::vector<int> u;
@@ -45,11 +43,40 @@ struct EdgeList {
     size_t size() const { return u.size(); }
 };
 
+// Shape of the graph, independent of any source.
+struct GraphStats {
+    int n = 0;
+    int64_t m = 0;
+    double avg_degree = 0.0;
+    double degree_stddev = 0.0;
+    int max_degree = 0;
+    Weight min_weight = 0;
+    Weight max_weight = 0;
+};
+
+// Shape of the search from one source. `levels` is the hop eccentricity of the
+// source, which is a lower bound on the graph diameter and not the same thing.
+struct SourceStats {
+    int levels = 0;
+    int64_t reached = 0;
+    int max_frontier = 0;
+    double avg_frontier = 0.0;
+};
+
+GraphStats graph_stats(const Graph& g);
+SourceStats source_stats(const Graph& g, int source);
+
 Graph build_csr(const EdgeList& el);
 void dedup(EdgeList& el);
 
-// ".bin" reads and writes the packed CSR format, anything else the text
-// edge list ("u v w" per line, "# ..." and blank lines ignored).
+// Every solver here settles vertices in nondecreasing distance order or relies
+// on relaxation converging, both of which need w >= 0. Throws on a negative
+// weight rather than returning a plausible wrong answer.
+void check_weights(const Graph& g);
+
+// the .bin reads and writes the packed CSR format, anything else the text
+// edge list ("u v w" per line, w defaulting to 1; "# ..." and blank lines
+// ignored).
 Graph load_graph(const std::string& path);
 void save_graph(const std::string& path, const EdgeList& el);
 

@@ -7,19 +7,24 @@
 
 namespace sssp {
 
+// Phases are kept apart so a GPU solver's kernel time is never confused with
+// what it spent building or moving its inputs.
 struct Timing {
-    // Time spent in the actual shortest-path work.
+    // Host side structures a solver derives for itself, e.g. gpu-edge's
+    // per-arc source array. Zero for solvers that take CSR as it comes.
+    double prep_ms = 0.0;
+    double h2d_ms = 0.0;
     double solve_ms = 0.0;
-    // Host/device copies of the graph and the distance array. Zero on CPU.
-    double transfer_ms = 0.0;
+    double d2h_ms = 0.0;
 
-    double total_ms() const { return solve_ms + transfer_ms; }
+    double transfer_ms() const { return h2d_ms + d2h_ms; }
+    double total_ms() const { return prep_ms + h2d_ms + solve_ms + d2h_ms; }
 };
 
 struct Run {
     std::vector<Weight> dist;
     Timing timing;
-    // Outer iterations: Bellman-Ford rounds, delta-stepping buckets, BFS levels.
+    // Outer iterations
     int64_t rounds = 0;
 };
 
@@ -30,9 +35,13 @@ public:
     virtual const char* device() const = 0;
     virtual Run run(const Graph& g, int source) = 0;
 
-    // Delta-stepping and near-far pick a bucket width from graph structure
-    // unless the caller pins one. Ignored by the other solvers.
+    // pins the bucket width for delta stepping and near-far
     virtual void set_delta(int) {}
+
+    // Solvers holding device state keep it across runs on the same graph and
+    // report prep_ms/h2d_ms of zero from the second run on. release() drops it,
+    // so a caller can measure either the cold cost or the amortised one.
+    virtual void release() {}
 };
 
 }  // namespace sssp

@@ -11,7 +11,6 @@ namespace sssp {
 struct SolverEntry {
     std::string name;
     std::string device;
-    std::string blurb;
     std::unique_ptr<Solver> (*make)();
 };
 

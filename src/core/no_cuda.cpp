@@ -1,5 +1,4 @@
-// Stubs used when the project is built without nvcc. src/gpu/device.cu
-// provides the real implementations otherwise.
+// Stubs for builds without nvcc as src/gpu/device.cu has the real ones
 #ifndef SSSP_CUDA
 
 #include "sssp/solvers.hpp"

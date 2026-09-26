@@ -31,6 +31,21 @@ public:
     DeviceBuffer(const DeviceBuffer&) = delete;
     DeviceBuffer& operator=(const DeviceBuffer&) = delete;
 
+    DeviceBuffer(DeviceBuffer&& o) noexcept : ptr_(o.ptr_), count_(o.count_) {
+        o.ptr_ = nullptr;
+        o.count_ = 0;
+    }
+    DeviceBuffer& operator=(DeviceBuffer&& o) noexcept {
+        if (this != &o) {
+            free();
+            ptr_ = o.ptr_;
+            count_ = o.count_;
+            o.ptr_ = nullptr;
+            o.count_ = 0;
+        }
+        return *this;
+    }
+
     void alloc(size_t count) {
         free();
         if (count == 0) return;
@@ -45,6 +60,7 @@ public:
     }
 
     void upload(const T* host, size_t count) {
+        if (count > count_) throw std::runtime_error("upload past end of buffer");
         CUDA_CHECK(cudaMemcpy(ptr_, host, count * sizeof(T),
                               cudaMemcpyHostToDevice));
     }
@@ -53,6 +69,7 @@ public:
         upload(host.data(), host.size());
     }
     void download(T* host, size_t count) const {
+        if (count > count_) throw std::runtime_error("download past end of buffer");
         CUDA_CHECK(cudaMemcpy(host, ptr_, count * sizeof(T),
                               cudaMemcpyDeviceToHost));
     }
@@ -67,8 +84,7 @@ private:
     size_t count_ = 0;
 };
 
-// Wall time of a stretch of device work, measured with events so that host-side
-// launch overhead is not folded into the number.
+// Device-side wall time, so host launch overhead stays out of the number.
 class GpuTimer {
 public:
     GpuTimer() {
@@ -102,8 +118,7 @@ struct DeviceCsr {
     int64_t m = 0;
 };
 
-// Uploads the CSR arrays and reports how long that took, so the bench can keep
-// transfer cost separate from solve cost.
+// Uploads the CSR arrays and returns how long it took.
 inline double upload_csr(const Graph& g, DeviceCsr& d) {
     GpuTimer t;
     t.start();
@@ -115,6 +130,33 @@ inline double upload_csr(const Graph& g, DeviceCsr& d) {
     return t.stop();
 }
 
+// Holds the CSR on the device between runs on the same graph, so repeated
+// queries pay the upload once. release() puts the next one back on the clock.
+class ResidentCsr {
+public:
+    // Adds the upload cost to h2d_ms. True if this call did the upload.
+    bool bind(const Graph& g, double& h2d_ms) {
+        if (owner_ == &g && csr_.n == g.n && csr_.m == g.num_edges()) {
+            return false;
+        }
+        release();
+        h2d_ms += upload_csr(g, csr_);
+        owner_ = &g;
+        return true;
+    }
+
+    void release() {
+        csr_ = DeviceCsr{};
+        owner_ = nullptr;
+    }
+
+    const DeviceCsr& get() const { return csr_; }
+
+private:
+    DeviceCsr csr_;
+    const Graph* owner_ = nullptr;
+};
+
 constexpr int kBlock = 256;
 constexpr int kWarp = 32;
 
@@ -125,11 +167,9 @@ inline int grid_for(int64_t work, int block = kBlock) {
     return static_cast<int>(blocks);
 }
 
-// Warp-aggregated queue push. The lanes with something to enqueue take a single
-// atomicAdd between them and then write to their own slot, turning up to 32
-// contended atomics on the queue counter into one. Every lane of the warp must
-// reach this call, which is why the expansion loops that use it are padded out
-// to a whole number of warp steps.
+// Warp-aggregated queue push: the lanes with something to enqueue share one
+// atomicAdd, turning up to 32 contended atomics into one. Every lane must reach
+// this call, so the expansion loops pad out to whole warp steps.
 __device__ inline void warp_push(int* queue, int* size, bool push, int v) {
     unsigned mask = __ballot_sync(0xffffffffu, push);
     if (mask == 0) return;

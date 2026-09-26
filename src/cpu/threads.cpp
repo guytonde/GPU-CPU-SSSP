@@ -11,11 +11,10 @@ namespace sssp {
 
 namespace {
 
-// Counts distinct physical cores by grouping the logical cpus that share a
-// sibling list. SSSP is memory bound, so the second hyperthread on a core buys
-// nothing, and on a shared machine running past the physical count leaves every
-// OpenMP barrier waiting on a descheduled thread. That turns a 2 us barrier
-// into a multi-millisecond one and swamps the algorithm entirely.
+// Distinct physical cores, by grouping logical cpus that share a sibling list.
+// SSSP is memory bound so the second hyperthread buys nothing, and on a shared
+// machine oversubscribing leaves every OpenMP barrier waiting on a descheduled
+// thread, turning a 2 us barrier into a multi-millisecond one.
 int physical_cores() {
     std::set<std::string> cores;
     for (int i = 0; i < omp_get_num_procs(); ++i) {

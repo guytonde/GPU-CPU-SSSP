@@ -20,17 +20,16 @@ std::unique_ptr<Solver> make_gpu_frontier();
 std::unique_ptr<Solver> make_gpu_near_far();
 #endif
 
-// Returns 0 when the binary has no CUDA support or the machine has no usable
-// device. Never throws, so the bench can degrade to CPU-only.
+// Returns 0 without CUDA support or a usable device. Never throws.
 int gpu_device_count();
 std::string gpu_device_name();
 
-// Threads used by the OpenMP solvers. Pass 0 to let it pick: the value of
-// OMP_NUM_THREADS if set, otherwise the physical core count.
+// Threads for the OpenMP solvers. 0 picks OMP_NUM_THREADS if set, else the
+// physical core count.
 void set_cpu_threads(int n);
 int cpu_threads();
 
-// Forces context creation so the first timed run does not pay for it.
+// warm up gpu by creating the context up front so the first timed run doesnt pay
 void gpu_warmup();
 
 }  // namespace sssp

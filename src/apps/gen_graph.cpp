@@ -24,7 +24,7 @@ struct Options {
     Weight wmax = 100;
     uint64_t seed = 12345;
     bool directed = false;
-    bool connect = true;
+    int connect = -1;  // -1 auto: on only where the topology needs it
     bool dedup_edges = true;
     std::string out = "graphs/out.txt";
 };
@@ -34,24 +34,33 @@ void usage() {
 
   --n N            vertices (default 10000)
   --m M            edges, before the undirected doubling (default 100000)
-  --topo T         uniform | rmat | grid | geometric (default uniform)
+  --topo T         uniform | rmat | grid | geometric | chain | star
+                   (default uniform)
   --wdist D        uniform | logunif | unit (default uniform)
   --wmin W         minimum weight (default 1)
   --wmax W         maximum weight (default 100)
   --seed S         rng seed (default 12345)
   --directed       emit each edge once instead of both ways
-  --no-connect     skip the spanning tree that makes vertex 0 reach everything
+  --connect        force the spanning tree on
+  --no-connect     force it off
   --keep-dups      do not collapse parallel edges
   --out PATH       output file; a .bin suffix writes packed CSR (default graphs/out.txt)
 
 topologies
-  uniform    Erdos-Renyi. Uniform degree, small diameter, the easy case.
-  rmat       Kronecker/RMAT with the Graph500 parameters. Heavy degree skew,
-             which is what separates thread-per-vertex from warp-per-vertex.
-  grid       2D mesh, so n is rounded to the nearest square and m is ignored.
-             Large diameter, tiny frontiers, worst case for the GPU.
+  uniform    Erdos-Renyi. Uniform degree, small diameter.
+  rmat       Graph500 parameters. Heavy degree skew, which separates
+             thread-per-vertex from warp-per-vertex.
+  grid       2D mesh. n rounds to the nearest square and m is ignored. Large
+             hop eccentricity, tiny frontiers.
   geometric  Random points in the unit square joined within a radius picked to
-             hit m edges. Roughly road-network shaped.
+             hit m edges. Roughly road shaped.
+  chain      Path graph. m is ignored. Maximal sequential depth: every round
+             advances the frontier by one vertex.
+  star       One hub joined to everything. m is ignored. Maximal degree skew.
+
+The spanning tree that makes vertex 0 reach everything is added only for the
+random topologies. grid, chain and star are connected by construction, and
+laying n-1 random edges over one collapses the very property it exists to test.
 )";
 }
 
@@ -78,9 +87,9 @@ private:
     std::uniform_real_distribution<double> log_;
 };
 
-// Random spanning tree over 0..n-1 rooted at 0, so every vertex is reachable
-// from the default source. Without it a sparse random graph leaves a large
-// unreachable tail and the timings measure the wrong thing.
+// Random spanning tree rooted at 0, so every vertex is reachable from the
+// default source. Without it a sparse random graph leaves a large unreachable
+// tail and the timings measure the wrong thing.
 void add_spanning_tree(EdgeList& el, long long n, std::mt19937_64& rng,
                        Weights& w) {
     std::vector<int> order(n);
@@ -104,8 +113,8 @@ void gen_uniform(EdgeList& el, long long n, long long m, std::mt19937_64& rng,
     }
 }
 
-// RMAT with the Graph500 quadrant probabilities. Recursively subdividing the
-// adjacency matrix with a skewed split is what produces the power-law degrees.
+// RMAT with the Graph500 quadrant probabilities. Subdividing the adjacency
+// matrix with a skewed split is what gives the power-law degrees.
 void gen_rmat(EdgeList& el, long long n, long long m, std::mt19937_64& rng,
               Weights& w) {
     const double a = 0.57, b = 0.19, c = 0.19;
@@ -147,8 +156,16 @@ void gen_grid(EdgeList& el, long long& n, std::mt19937_64& rng, Weights& w) {
     }
 }
 
-// Random geometric graph via a uniform grid of cells sized to the connection
-// radius, so each point only tests its 9 neighbouring cells instead of all n.
+void gen_chain(EdgeList& el, long long n, std::mt19937_64& rng, Weights& w) {
+    for (long long i = 0; i + 1 < n; ++i) el.add(int(i), int(i + 1), w(rng));
+}
+
+void gen_star(EdgeList& el, long long n, std::mt19937_64& rng, Weights& w) {
+    for (long long i = 1; i < n; ++i) el.add(0, int(i), w(rng));
+}
+
+// Random geometric graph over a grid of cells sized to the connection radius, so
+// each point tests 9 cells instead of all n.
 void gen_geometric(EdgeList& el, long long n, long long m, std::mt19937_64& rng,
                    Weights& w) {
     std::uniform_real_distribution<double> unit(0.0, 1.0);
@@ -206,7 +223,8 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--wmax") o.wmax = std::stoi(next());
         else if (a == "--seed") o.seed = std::stoull(next());
         else if (a == "--directed") o.directed = true;
-        else if (a == "--no-connect") o.connect = false;
+        else if (a == "--connect") o.connect = 1;
+        else if (a == "--no-connect") o.connect = 0;
         else if (a == "--keep-dups") o.dedup_edges = false;
         else if (a == "--out") o.out = next();
         else throw std::runtime_error("unknown option " + a);
@@ -238,6 +256,12 @@ int main(int argc, char** argv) {
     Weights w(o.wdist, o.wmin, o.wmax);
     EdgeList el;
 
+    // grid, chain and star are connected already; laying n-1 random edges over
+    // one collapses the property it exists to test.
+    const bool self_connected = o.topology == "grid" || o.topology == "chain" ||
+                                o.topology == "star";
+    const bool connect = o.connect < 0 ? !self_connected : o.connect == 1;
+
     try {
         if (o.topology == "uniform") {
             gen_uniform(el, o.n, o.m, rng, w);
@@ -247,12 +271,16 @@ int main(int argc, char** argv) {
             gen_grid(el, o.n, rng, w);
         } else if (o.topology == "geometric") {
             gen_geometric(el, o.n, o.m, rng, w);
+        } else if (o.topology == "chain") {
+            gen_chain(el, o.n, rng, w);
+        } else if (o.topology == "star") {
+            gen_star(el, o.n, rng, w);
         } else {
             std::cerr << "error: unknown topology " << o.topology << "\n";
             return 1;
         }
 
-        if (o.connect) add_spanning_tree(el, o.n, rng, w);
+        if (connect) add_spanning_tree(el, o.n, rng, w);
 
         if (!o.directed) {
             size_t forward = el.size();
@@ -272,6 +300,7 @@ int main(int argc, char** argv) {
               << " n=" << el.n << " arcs=" << el.size()
               << " avg_deg=" << double(el.size()) / double(el.n)
               << " weights=" << o.wdist << "[" << o.wmin << "," << o.wmax
-              << "] seed=" << o.seed << "\n";
+              << "] seed=" << o.seed
+              << " spanning_tree=" << (connect ? "yes" : "no") << "\n";
     return 0;
 }
