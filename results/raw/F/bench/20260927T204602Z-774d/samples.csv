@@ -1,0 +1,2 @@
+run_id,graph_id,source,solver,device,mode,session,query_index,rep,warmup,instrumented,order_pos,cache_state,threads,counters_on,delta_used,wall_ms,prep_ms,alloc_ms,h2d_ms,solve_ms,d2h_ms,free_ms,kernel_ms,iterations,sync_rounds,host_syncs,parallel_phases,serial_phases,vertices_expanded,edges_touched,mismatches,dist_hash,gpu_clock_mhz_measured,gpu_foreign_procs,load1
+20260927T204602Z-774d,546ebf08dc181db3,561519,gpu-edge,gpu,oneshot,,0,0,0,0,0,warm,0,1,0,2109.75424,60.671229,0.501171,25.3023357,2010.78186,1.916559,7.988942,,19,19,19,0,0,0,637533334,0,8062a200dc12272a,,0,0.71

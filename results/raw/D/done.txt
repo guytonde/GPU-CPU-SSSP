@@ -1,0 +1,10 @@
+layered_W256_w100:25c89a0896
+layered_W256_w100:4b4e4b285e
+layered_W4096_w100:89941e0070
+layered_W4096_w100:7873482129
+layered_W65536_w100:76bbbb9fcb
+layered_W65536_w100:431058c3b9
+uniform_w100:e5e9de82f0
+uniform_w100:e4ef8407ef
+grid_w100:6674c79a72
+grid_w100:2887843403

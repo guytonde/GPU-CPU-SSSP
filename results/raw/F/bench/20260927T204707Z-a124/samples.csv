@@ -1,0 +1,2 @@
+run_id,graph_id,source,solver,device,mode,session,query_index,rep,warmup,instrumented,order_pos,cache_state,threads,counters_on,delta_used,wall_ms,prep_ms,alloc_ms,h2d_ms,solve_ms,d2h_ms,free_ms,kernel_ms,iterations,sync_rounds,host_syncs,parallel_phases,serial_phases,vertices_expanded,edges_touched,mismatches,dist_hash,gpu_clock_mhz_measured,gpu_foreign_procs,load1
+20260927T204707Z-a124,546ebf08dc181db3,561519,delta-omp,cpu,oneshot,,0,0,0,0,0,warm,24,1,12,119.809629,0,10.003264,0,109.80523,0,0.000254,,33,147,0,46,101,4602608,74025566,0,8062a200dc12272a,,0,0.99

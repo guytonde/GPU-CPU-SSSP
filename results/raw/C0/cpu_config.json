@@ -1,0 +1,13 @@
+{
+  "label": "all_physical",
+  "taskset": "",
+  "threads": 0,
+  "env": {},
+  "threads_effective": 24,
+  "rule": "fewest threads among configurations within 5% of the fastest delta-omp median",
+  "medians_ms": {
+    "all_physical": 102.875,
+    "all_logical": 98.129,
+    "p8_pinned": 173.156
+  }
+}

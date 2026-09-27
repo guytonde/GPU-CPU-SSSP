@@ -1,0 +1,5 @@
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+42.7,15046520,15,1003101.3,1002632.0,1002024,1005032,965.7,"sssp::<unnamed>::spin(long long, int *)"
+36.5,12870707,5984,2150.9,2080.0,1504,2752,276.5,"sssp::<unnamed>::expand(const int *, const int *, const int *, int *, const int *, int, int *, int *, int *, unsigned long long *)"
+20.8,7330174,5984,1225.0,1248.0,1024,1312,51.1,"sssp::clear_queued(const int *, int, int *)"
+0.1,18977,4,4744.3,4768.5,4640,4800,71.1,"sssp::seed(int *, int *, int, int, int *, int *)"

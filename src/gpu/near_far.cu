@@ -1,21 +1,16 @@
 #include <algorithm>
 #include <utility>
 
-#include "../cpu/delta.hpp"
 #include "cuda_common.cuh"
+#include "sssp/delta.hpp"
 #include "sssp/solvers.hpp"
 
 namespace sssp {
 
 namespace {
 
-// Near-far split: the frontier expansion, except a vertex landing past the
-// threshold is parked in the far pile instead of expanded now. Delta-stepping's
-// bucket rule with two buckets.
-//
-// One `queued` flag per vertex means a vertex sits in at most one queue, so both
-// queues are bounded by n. A vertex that improves while parked is not moved
-// eagerly; the next split re-reads its distance and routes it.
+// Like the frontier expansion, but a vertex whose new distance is past the
+// threshold goes to the far queue instead. A vertex is in at most one queue.
 __global__ void expand_split(const int* __restrict__ offsets,
                              const int* __restrict__ targets,
                              const Weight* __restrict__ weights,
@@ -25,7 +20,8 @@ __global__ void expand_split(const int* __restrict__ offsets,
                              int* __restrict__ near_queue,
                              int* __restrict__ near_size,
                              int* __restrict__ far_queue,
-                             int* __restrict__ far_size) {
+                             int* __restrict__ far_size,
+                             unsigned long long* __restrict__ work) {
     const int lane = threadIdx.x & (kWarp - 1);
     const int warp_id = (blockIdx.x * blockDim.x + threadIdx.x) / kWarp;
     const int warps = (blockDim.x * gridDim.x) / kWarp;
@@ -35,6 +31,7 @@ __global__ void expand_split(const int* __restrict__ offsets,
         Weight du = dist[u];
         int begin = offsets[u];
         int len = offsets[u + 1] - begin;
+        if (work && lane == 0) atomicAdd(work, (unsigned long long)len);
 
         for (int off = lane; off < round_up(len, kWarp); off += kWarp) {
             int v = -1;
@@ -53,8 +50,7 @@ __global__ void expand_split(const int* __restrict__ offsets,
     }
 }
 
-// Rebuilds the near set from the far pile after the threshold moves. Entries now
-// under the threshold go near and give up their flag, the rest stay far.
+// After the threshold moves, sends far vertices now under it to the near queue.
 __global__ void split_far(const Weight* __restrict__ dist,
                           const int* __restrict__ in_queue, int in_size,
                           Weight threshold, int* __restrict__ queued,
@@ -79,119 +75,137 @@ __global__ void split_far(const Weight* __restrict__ dist,
     }
 }
 
-// Clears the flags of the vertices about to expand, so an improvement found this
-// round can re-queue them. O(|frontier|), not O(n).
-__global__ void clear_flags(const int* __restrict__ queue, int size,
-                            int* __restrict__ queued) {
-    int stride = blockDim.x * gridDim.x;
-    for (int k = blockIdx.x * blockDim.x + threadIdx.x; k < size; k += stride) {
-        queued[queue[k]] = 0;
-    }
-}
-
-__global__ void seed(Weight* dist, int* queued, int n, int source, int* queue,
-                     int* size) {
-    int stride = blockDim.x * gridDim.x;
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += stride) {
-        dist[i] = (i == source) ? 0 : kInf;
-        queued[i] = (i == source) ? 1 : 0;
-    }
-    if (blockIdx.x == 0 && threadIdx.x == 0) {
-        queue[0] = source;
-        *size = 1;
-    }
-}
-
 class GpuNearFar : public Solver {
 public:
     const char* name() const override { return "gpu-nearfar"; }
     const char* device() const override { return "gpu"; }
     void set_delta(int d) override { forced_delta_ = d; }
+    void set_counters(bool on) override { counters_ = on; }
+    void set_instrument(bool on) override { clock_.enable(on); }
 
     Run run(const Graph& g, int source) override {
         Run r;
-        r.dist.assign(g.n, kInf);
+        Counters& c = r.counters;
 
-        csr_.bind(g, r.timing.h2d_ms);
+        if (csr_.bind(g, r.timing)) {
+            Timer alloc;
+            d_dist_.alloc(g.n);
+            d_queued_.alloc(g.n);
+            near_a_.alloc(g.n);
+            near_b_.alloc(g.n);
+            far_a_.alloc(g.n);
+            far_b_.alloc(g.n);
+            counters_buf_.alloc(3);
+            d_work_.alloc(1);
+            r.timing.alloc_ms += alloc.ms();
+        }
         const DeviceCsr& d = csr_.get();
-
         const Weight delta = forced_delta_ > 0 ? forced_delta_ : pick_delta(g);
+        r.delta_used = delta;
+        unsigned long long* work = counters_ ? d_work_.get() : nullptr;
+        if (work) d_work_.fill_zero();
+        clock_.reset();
 
-        DeviceBuffer<Weight> d_dist(g.n);
-        DeviceBuffer<int> d_queued(g.n);
-        DeviceBuffer<int> near_a(g.n), near_b(g.n), far_a(g.n), far_b(g.n);
-        DeviceBuffer<int> counters(3);
-
-        int* d_near = counters.get();
-        int* d_far = counters.get() + 1;
-        int* d_far_next = counters.get() + 2;
+        int* d_near = counters_buf_.get();
+        int* d_far = counters_buf_.get() + 1;
+        int* d_far_next = counters_buf_.get() + 2;
 
         GpuTimer solve;
         solve.start();
 
-        seed<<<grid_for(g.n), kBlock>>>(d_dist.get(), d_queued.get(), g.n,
-                                        source, near_a.get(), d_near);
+        clock_.start();
+        seed<<<grid_for(g.n), kBlock>>>(d_dist_.get(), d_queued_.get(), g.n,
+                                        source, near_a_.get(), d_near);
+        clock_.stop();
         device_set(d_far, 0);
+        c.host_syncs++;
 
-        int* near_cur = near_a.get();
-        int* near_new = near_b.get();
-        int* far_cur = far_a.get();
-        int* far_new = far_b.get();
+        int* near_cur = near_a_.get();
+        int* near_new = near_b_.get();
+        int* far_cur = far_a_.get();
+        int* far_new = far_b_.get();
 
         int near = 1;
         Weight threshold = delta;
-        // Doubles on an empty split, so a wide gap in the distance
-        // distribution costs log(gap) splits instead of gap/delta.
+        // Doubles after an empty split, so a gap in distances costs log(gap) splits.
         Weight step = delta;
 
         while (true) {
             while (near > 0) {
+                c.vertices_expanded += near;
                 device_set(d_near, 0);
-                clear_flags<<<grid_for(near), kBlock>>>(near_cur, near,
-                                                       d_queued.get());
+                clock_.start();
+                clear_queued<<<grid_for(near), kBlock>>>(near_cur, near,
+                                                       d_queued_.get());
+                clock_.stop();
+                clock_.start();
                 expand_split<<<grid_for(int64_t(near) * kWarp), kBlock>>>(
                     d.offsets.get(), d.targets.get(), d.weights.get(),
-                    d_dist.get(), near_cur, near, threshold, d_queued.get(),
-                    near_new, d_near, far_cur, d_far);
+                    d_dist_.get(), near_cur, near, threshold, d_queued_.get(),
+                    near_new, d_near, far_cur, d_far, work);
+                clock_.stop();
 
                 near = device_get(d_near);
+                c.host_syncs += 2;
+                clock_.drain();
                 std::swap(near_cur, near_new);
-                r.rounds++;
+                c.iterations++;
+                c.sync_rounds++;
             }
 
             int far = device_get(d_far);
+            c.host_syncs++;
             if (far == 0) break;
 
             threshold += step;
             device_set(d_near, 0);
             device_set(d_far_next, 0);
-            split_far<<<grid_for(far), kBlock>>>(d_dist.get(), far_cur, far,
-                                                 threshold, d_queued.get(),
+            clock_.start();
+            split_far<<<grid_for(far), kBlock>>>(d_dist_.get(), far_cur, far,
+                                                 threshold, d_queued_.get(),
                                                  near_cur, d_near, far_new,
                                                  d_far_next);
+            clock_.stop();
 
             near = device_get(d_near);
             int remaining = device_get(d_far_next);
             device_set(d_far, remaining);
+            c.host_syncs += 5;
+            clock_.drain();
             std::swap(far_cur, far_new);
             step = (near == 0) ? step * 2 : delta;
-            r.rounds++;
+            c.iterations++;
+            c.sync_rounds++;
         }
 
         r.timing.solve_ms = solve.stop();
+        if (clock_.enabled()) r.timing.kernel_ms = clock_.total_ms();
 
-        GpuTimer back;
-        back.start();
-        d_dist.download(r.dist.data(), g.n);
-        r.timing.d2h_ms = back.stop();
+        r.timing.d2h_ms = download_result(d_dist_, r.dist, g.n);
+        if (work) c.edges_touched = read_counter(d_work_);
         return r;
     }
 
-    void release() override { csr_.release(); }
+    void release() override {
+        csr_.release();
+        d_dist_.free();
+        d_queued_.free();
+        near_a_.free();
+        near_b_.free();
+        far_a_.free();
+        far_b_.free();
+        counters_buf_.free();
+        d_work_.free();
+    }
 
 private:
     int forced_delta_ = 0;
+    bool counters_ = true;
+    KernelClock clock_;
     ResidentCsr csr_;
+    DeviceBuffer<Weight> d_dist_;
+    DeviceBuffer<int> d_queued_, near_a_, near_b_, far_a_, far_b_, counters_buf_;
+    DeviceBuffer<unsigned long long> d_work_;
 };
 
 }  // namespace

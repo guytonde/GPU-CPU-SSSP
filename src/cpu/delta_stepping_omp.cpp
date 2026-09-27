@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "delta.hpp"
+#include "sssp/delta.hpp"
 #include "sssp/solvers.hpp"
 #include "sssp/timer.hpp"
 
@@ -15,16 +15,14 @@ namespace {
 using Buckets = std::vector<std::vector<int>>;
 using Staged = std::vector<Buckets>;
 
-// Below this many vertices a phase runs serially: forking threads to relax a
-// few hundred edges costs more than it saves.
+// Phases with fewer vertices than this run serially.
 constexpr size_t kSerialCutoff = 4096;
 
 inline Weight load_dist(const Weight* dist, int v) {
     return __atomic_load_n(&dist[v], __ATOMIC_RELAXED);
 }
 
-// Lock-free min-write. True if this thread lowered dist[v], which is who gets
-// to enqueue v.
+// True if this thread lowered dist[v], which makes it the one to enqueue v.
 inline bool relax_atomic(Weight* dist, int v, Weight nd) {
     Weight old = __atomic_load_n(&dist[v], __ATOMIC_RELAXED);
     while (nd < old) {
@@ -36,11 +34,11 @@ inline bool relax_atomic(Weight* dist, int v, Weight nd) {
     return false;
 }
 
-// Relaxes one vertex's light or heavy edges into `out`: the shared bucket ring
-// on the serial path, a private staging area on the parallel one.
+// Relaxes the light or heavy edges of u into `out`.
 inline void relax_vertex(const Graph& g, Weight* dist, int u, Weight du,
                          int delta, int nb, bool light, Buckets& out,
-                         int64_t& highest) {
+                         int64_t& highest, int64_t& touched) {
+    touched += g.offsets[u + 1] - g.offsets[u];
     for (int i = g.offsets[u]; i < g.offsets[u + 1]; ++i) {
         if ((g.weights[i] <= delta) != light) continue;
         Weight nd = du + g.weights[i];
@@ -52,8 +50,7 @@ inline void relax_vertex(const Graph& g, Weight* dist, int u, Weight du,
     }
 }
 
-// Buckets are independent, so one bucket per thread needs no synchronisation.
-// Draining serially would leave an O(m) sequential section per phase.
+// Moves each thread's staged vertices into the shared ring, one bucket per thread.
 void merge_staged(Staged& staged, Buckets& bucket, int nb) {
 #pragma omp parallel for schedule(dynamic)
     for (int b = 0; b < nb; ++b) {
@@ -65,34 +62,41 @@ void merge_staged(Staged& staged, Buckets& bucket, int nb) {
     }
 }
 
-// One pass over `work`. A light pass (settled != null) drops vertices that moved
-// to a lower bucket and appends the survivors to *settled; a heavy pass just
-// fires. Returns the highest absolute bucket index written.
+// One pass over `work`. A light pass (settled != null) skips vertices that
+// moved to a lower bucket and records the rest in settled. Returns the highest
+// bucket index written.
 int64_t expand(const Graph& g, Weight* dist, const std::vector<int>& work,
                int delta, int nb, int64_t idx, Staged& staged, Buckets& bucket,
-               std::vector<int>* settled) {
+               std::vector<int>* settled, Counters& c) {
     const bool light = settled != nullptr;
     int64_t highest = 0;
+    int64_t touched = 0, expanded = 0;
+    c.sync_rounds++;
 
     if (work.size() < kSerialCutoff) {
+        c.serial_phases++;
         for (int u : work) {
             Weight du = load_dist(dist, u);
             if (light) {
                 if (du / delta != idx) continue;
                 settled->push_back(u);
+                expanded++;
             }
-            relax_vertex(g, dist, u, du, delta, nb, light, bucket, highest);
+            relax_vertex(g, dist, u, du, delta, nb, light, bucket, highest, touched);
         }
+        c.edges_touched += touched;
+        c.vertices_expanded += expanded;
         return highest;
     }
+    c.parallel_phases++;
 
     const size_t base = light ? settled->size() : 0;
     if (light) settled->resize(base + work.size());
     int kept = 0;
 
-    // num_threads pins the team to the staging areas allocated for it: a larger
-    // team would index past the end of `staged`.
-#pragma omp parallel num_threads(int(staged.size())) reduction(max : highest)
+    // The team size must match the number of staging areas.
+#pragma omp parallel num_threads(int(staged.size())) reduction(max : highest) \
+    reduction(+ : touched, expanded)
     {
         Buckets& mine = staged[omp_get_thread_num()];
         std::vector<int> keep;
@@ -104,8 +108,9 @@ int64_t expand(const Graph& g, Weight* dist, const std::vector<int>& work,
             if (light) {
                 if (du / delta != idx) continue;
                 keep.push_back(u);
+                expanded++;
             }
-            relax_vertex(g, dist, u, du, delta, nb, light, mine, highest);
+            relax_vertex(g, dist, u, du, delta, nb, light, mine, highest, touched);
         }
 
         if (light && !keep.empty()) {
@@ -121,11 +126,12 @@ int64_t expand(const Graph& g, Weight* dist, const std::vector<int>& work,
 
     if (light) settled->resize(base + kept);
     merge_staged(staged, bucket, nb);
+    c.edges_touched += touched;
+    c.vertices_expanded += expanded;
     return highest;
 }
 
-// Serial bucket structure, parallel phases. The only shared writes on the hot
-// path are the CAS loops on dist; queue insertions stage privately first.
+// A serial bucket ring with parallel phases. Threads stage their pushes privately.
 class DeltaSteppingOmp : public Solver {
 public:
     const char* name() const override { return "delta-omp"; }
@@ -133,16 +139,18 @@ public:
     void set_delta(int d) override { forced_delta_ = d; }
 
     Run run(const Graph& g, int source) override {
-        Timer t;
         Run r;
-        r.dist.assign(g.n, kInf);
-
+        Timer alloc;
         const int delta = forced_delta_ > 0 ? forced_delta_ : pick_delta(g);
         const int nb = bucket_count(g, delta);
-
         Buckets bucket(nb);
         Staged staged(cpu_threads(), Buckets(nb));
+        r.dist.reserve(g.n);
+        r.timing.alloc_ms = alloc.ms();
+        r.delta_used = delta;
 
+        Timer t;
+        r.dist.assign(g.n, kInf);
         Weight* dist = r.dist.data();
         dist[source] = 0;
         bucket[0].push_back(source);
@@ -153,7 +161,7 @@ public:
 
         for (int64_t idx = 0; idx <= highest; ++idx) {
             if (bucket[idx % nb].empty()) continue;
-            r.rounds++;
+            r.counters.iterations++;
             settled.clear();
 
             while (!bucket[idx % nb].empty()) {
@@ -161,13 +169,15 @@ public:
                 bucket[idx % nb].clear();
                 highest = std::max(highest, expand(g, dist, frontier, delta, nb,
                                                    idx, staged, bucket,
-                                                   &settled));
+                                                   &settled, r.counters));
             }
 
             highest = std::max(highest, expand(g, dist, settled, delta, nb, idx,
-                                               staged, bucket, nullptr));
+                                               staged, bucket, nullptr, r.counters));
         }
 
+        Buckets().swap(bucket);
+        Staged().swap(staged);
         r.timing.solve_ms = t.ms();
         return r;
     }

@@ -1,0 +1,43 @@
+wrote graphs/profile/grid_unit.bin  topo=grid n=1048576 arcs=4190208 topo_hash=8f7187cfb3f3ef96 graph_id=4a1e005b444fe23d
+wrote graphs/profile/layered_W256.bin  topo=layered n=1048576 arcs=8386560 topo_hash=c285b111637259ad graph_id=8e15dabf21369ba5
+wrote graphs/profile/uniform_2e22.bin  topo=uniform n=4194304 arcs=33554386 topo_hash=080169367fd47f9d graph_id=546ebf08dc181db3
+wrote graphs/profile/hub.bin  topo=hub n=1048576 arcs=8388572 topo_hash=eb1c52f1d0b092b5 graph_id=fc315e1936c5537b
+== ncu grid_frontier
+== ncu layered_frontier
+== ncu uniform_frontier
+== ncu uniform_nearfar
+== ncu uniform_edge
+== ncu uniform_topo
+== ncu hub_topo
+== ncu hub_frontier
+== nsys grid_frontier
+WARNING: Device-side CUDA Event completion trace is currently enabled.
+         This may increase runtime overhead and the likelihood of false
+         dependencies across CUDA Streams. If you wish to avoid this, please
+         disable the feature with --cuda-event-trace=false.
+WARNING: CPU IP/backtrace sampling not supported, disabling.
+Try the 'nsys status --environment' command to learn more.
+
+WARNING: CPU context switch tracing not supported, disabling.
+Try the 'nsys status --environment' command to learn more.
+
+== perf dijkstra uniform_2e22 reps=1
+== perf dijkstra uniform_2e22 reps=11
+== perf dial uniform_2e22 reps=1
+== perf dial uniform_2e22 reps=11
+== perf delta-omp uniform_2e22 reps=1
+== perf delta-omp uniform_2e22 reps=11
+== perf dijkstra grid_unit reps=1
+== perf dijkstra grid_unit reps=11
+== perf dial grid_unit reps=1
+== perf dial grid_unit reps=11
+== perf delta-omp grid_unit reps=1
+== perf delta-omp grid_unit reps=11
+wrote graphs/profile/placement/grid.bin  topo=grid n=1048576 arcs=4190208 topo_hash=8f7187cfb3f3ef96 graph_id=c66701076edbaf96
+wrote graphs/profile/placement/layered.bin  topo=layered n=1048576 arcs=8380416 topo_hash=1e7f67c03436fb33 graph_id=c8f3e5be4bc53f18
+wrote graphs/profile/placement/uniform.bin  topo=uniform n=1048576 arcs=8388572 topo_hash=92d4e722235760eb graph_id=bdcb775028e8cf1e
+== placement grid
+== placement layered
+== placement uniform
+wrote results/raw/F
+exit=0

@@ -8,38 +8,42 @@ namespace sssp {
 
 namespace {
 
-// Dial's algorithm: settle in increasing order out of a ring of maxw+1 buckets,
-// no heap and no log factor. Scanning for the next non-empty bucket costs
-// O(n * maxw), so this only pays off for small integer weights.
+// Dial's algorithm with a ring of maxw+1 buckets. Finding the next nonempty
+// bucket costs O(max distance), so it suits small integer weights.
 class DijkstraDial : public Solver {
 public:
     const char* name() const override { return "dial"; }
     const char* device() const override { return "cpu"; }
 
     Run run(const Graph& g, int source) override {
-        Timer t;
         Run r;
-        r.dist.assign(g.n, kInf);
-
+        Timer alloc;
         const Weight maxw = std::max<Weight>(1, g.max_weight());
         const int nb = maxw + 1;
         std::vector<std::vector<int>> bucket(nb);
+        r.dist.reserve(g.n);
+        r.timing.alloc_ms = alloc.ms();
 
+        Timer t;
+        r.dist.assign(g.n, kInf);
         r.dist[source] = 0;
         bucket[0].push_back(source);
 
+        Counters& c = r.counters;
         Weight d = 0;
         int remaining = 1;
         while (remaining > 0) {
             while (bucket[d % nb].empty()) ++d;
             auto& b = bucket[d % nb];
 
-            r.rounds++;
+            c.iterations++;
             while (!b.empty()) {
                 int u = b.back();
                 b.pop_back();
                 --remaining;
-                if (r.dist[u] != d) continue;  // stale entry from an earlier relax
+                if (r.dist[u] != d) continue;  // stale entry
+                c.vertices_expanded++;
+                c.edges_touched += g.offsets[u + 1] - g.offsets[u];
 
                 for (int i = g.offsets[u]; i < g.offsets[u + 1]; ++i) {
                     int v = g.targets[i];
@@ -53,6 +57,8 @@ public:
             }
         }
 
+        // Freeing the ring counts as part of the query.
+        std::vector<std::vector<int>>().swap(bucket);
         r.timing.solve_ms = t.ms();
         return r;
     }
