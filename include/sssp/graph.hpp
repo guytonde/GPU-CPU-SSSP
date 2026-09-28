@@ -2,22 +2,35 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace sssp {
 
 using Weight = int32_t;
 
-// Half of INT32_MAX so that dist[u] + w never overflows during relaxation.
+// Half of INT32_MAX, so dist[u] + w cannot overflow.
 constexpr Weight kInf = 0x3fffffff;
 
-// compressed sparse row so edges of vertex u live at indices
-// [offsets[u], offsets[u+1]) of targets/weights
+// Ordered key=value parameters that travel with a .bin graph.
+struct Meta {
+    std::vector<std::pair<std::string, std::string>> items;
+
+    void set(const std::string& key, const std::string& value);
+    std::string get(const std::string& key, const std::string& fallback = "") const;
+    bool has(const std::string& key) const;
+
+    std::string serialize() const;
+    static Meta parse(const std::string& text);
+};
+
+// CSR: the edges of u are [offsets[u], offsets[u+1]) in targets and weights.
 struct Graph {
     int n = 0;
     std::vector<int> offsets;
     std::vector<int> targets;
     std::vector<Weight> weights;
+    Meta meta;
 
     int64_t num_edges() const { return static_cast<int64_t>(targets.size()); }
     int degree(int u) const { return offsets[u + 1] - offsets[u]; }
@@ -28,7 +41,6 @@ struct Graph {
     std::vector<int> edge_sources() const;
 };
 
-// Intermediate form used by the generators and the text reader
 struct EdgeList {
     int n = 0;
     std::vector<int> u;
@@ -43,46 +55,30 @@ struct EdgeList {
     size_t size() const { return u.size(); }
 };
 
-// Shape of the graph, independent of any source.
-struct GraphStats {
-    int n = 0;
-    int64_t m = 0;
-    double avg_degree = 0.0;
-    double degree_stddev = 0.0;
-    int max_degree = 0;
-    Weight min_weight = 0;
-    Weight max_weight = 0;
-};
-
-// Shape of the search from one source. `levels` is the hop eccentricity of the
-// source, which is a lower bound on the graph diameter and not the same thing.
-struct SourceStats {
-    int levels = 0;
-    int64_t reached = 0;
-    int max_frontier = 0;
-    double avg_frontier = 0.0;
-};
-
-GraphStats graph_stats(const Graph& g);
-SourceStats source_stats(const Graph& g, int source);
-
+// Each adjacency list comes out sorted by (target, weight), so the result does
+// not depend on the order of the input edges.
 Graph build_csr(const EdgeList& el);
 void dedup(EdgeList& el);
 
-// Every solver here settles vertices in nondecreasing distance order or relies
-// on relaxation converging, both of which need w >= 0. Throws on a negative
-// weight rather than returning a plausible wrong answer.
+// Throws on a negative weight.
 void check_weights(const Graph& g);
 
-// the .bin reads and writes the packed CSR format, anything else the text
-// edge list ("u v w" per line, w defaulting to 1; "# ..." and blank lines
-// ignored).
+// .bin files hold the CSR and its Meta. Any other path is a text edge list,
+// one "u v [w]" per line, with w defaulting to 1 and # lines ignored.
 Graph load_graph(const std::string& path);
-void save_graph(const std::string& path, const EdgeList& el);
+void save_graph(const std::string& path, const Graph& g);
 
 EdgeList read_edge_list(const std::string& path);
 void write_edge_list(const std::string& path, const EdgeList& el);
 Graph read_binary(const std::string& path);
 void write_binary(const std::string& path, const Graph& g);
+
+// topo_hash ignores the weights, so graphs that differ only in weights share it.
+uint64_t hash_words(const void* data, size_t bytes, uint64_t seed);
+uint64_t topo_hash(const Graph& g);
+uint64_t weights_hash(const Graph& g);
+uint64_t graph_hash(const Graph& g);
+uint64_t dist_hash(const std::vector<Weight>& dist);
+std::string hex64(uint64_t h);
 
 }  // namespace sssp

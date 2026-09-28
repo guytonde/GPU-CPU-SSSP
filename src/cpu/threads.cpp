@@ -1,4 +1,5 @@
 #include <omp.h>
+#include <sched.h>
 
 #include <cstdlib>
 #include <fstream>
@@ -11,17 +12,19 @@ namespace sssp {
 
 namespace {
 
-// Distinct physical cores, by grouping logical cpus that share a sibling list.
-// SSSP is memory bound so the second hyperthread buys nothing, and on a shared
-// machine oversubscribing leaves every OpenMP barrier waiting on a descheduled
-// thread, turning a 2 us barrier into a multi-millisecond one.
+// Physical cores among the CPUs in the affinity mask, so taskset is respected.
 int physical_cores() {
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    if (sched_getaffinity(0, sizeof(mask), &mask) != 0) return omp_get_num_procs();
+
     std::set<std::string> cores;
-    for (int i = 0; i < omp_get_num_procs(); ++i) {
+    for (int i = 0; i < CPU_SETSIZE; ++i) {
+        if (!CPU_ISSET(i, &mask)) continue;
         std::ifstream in("/sys/devices/system/cpu/cpu" + std::to_string(i) +
                          "/topology/thread_siblings_list");
         std::string siblings;
-        if (in && std::getline(in, siblings)) cores.insert(siblings);
+        cores.insert(in && std::getline(in, siblings) ? siblings : std::to_string(i));
     }
     return cores.empty() ? omp_get_num_procs() : int(cores.size());
 }

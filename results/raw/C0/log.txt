@@ -1,0 +1,14 @@
+$ /home/jacob/Documents/GPU-CPU-SSSP/bin/calibrate --out /home/jacob/Documents/GPU-CPU-SSSP/results/raw/C0
+calibration run 20260927T183802Z-c0
+  omp regions done
+  round sync_only done
+  round frontier_round done
+  round nearfar_inner done
+  copies done
+  round sweep uniform_deg8 done
+  round sweep grid_deg4 done
+  hub latency done
+wrote /home/jacob/Documents/GPU-CPU-SSSP/results/raw/C0/20260927T183802Z-c0
+$ /home/jacob/Documents/GPU-CPU-SSSP/bin/bench /home/jacob/Documents/GPU-CPU-SSSP/graphs/study/c0_uniform.bin --experiment C0 --out /home/jacob/Documents/GPU-CPU-SSSP/results/raw/C0/cpu_configs --only dial,delta-omp --sources 4 --reps 5 --affinity-label all_physical --quiet
+$ /home/jacob/Documents/GPU-CPU-SSSP/bin/bench /home/jacob/Documents/GPU-CPU-SSSP/graphs/study/c0_uniform.bin --experiment C0 --out /home/jacob/Documents/GPU-CPU-SSSP/results/raw/C0/cpu_configs --only dial,delta-omp --sources 4 --reps 5 --affinity-label all_logical --quiet --threads 32
+$ taskset -c 0,2,4,6,8,10,12,14 /home/jacob/Documents/GPU-CPU-SSSP/bin/bench /home/jacob/Documents/GPU-CPU-SSSP/graphs/study/c0_uniform.bin --experiment C0 --out /home/jacob/Documents/GPU-CPU-SSSP/results/raw/C0/cpu_configs --only dial,delta-omp --sources 4 --reps 5 --affinity-label p8_pinned --quiet --threads 8

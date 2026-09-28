@@ -1,0 +1,12 @@
+# started on Sun Sep 27 15:46:29 2026
+
+22818499083,ns,duration_time,22818499083,100.00,1.004,G/sec
+22727.14,msec,task-clock,22727138416,100.00,0.996,CPUs utilized
+84348058724,,cpu_atom/cycles/,31516515,0.00,3.711,GHz
+129886519437,,cpu_core/cycles/,22695621901,99.00,5.715,GHz
+47373222613,,cpu_atom/instructions/,31516515,0.00,0.56,insn per cycle
+67135201637,,cpu_core/instructions/,22695621901,99.00,0.52,insn per cycle
+2884,,cpu_atom/LLC-load-misses/,31516515,0.00,,
+445286703,,cpu_core/LLC-load-misses/,22695621901,99.00,,
+105139781,,cpu_atom/branch-misses/,31516515,0.00,,
+1396589289,,cpu_core/branch-misses/,22695621901,99.00,,

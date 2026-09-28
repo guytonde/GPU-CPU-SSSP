@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "delta.hpp"
+#include "sssp/delta.hpp"
 #include "sssp/solvers.hpp"
 #include "sssp/timer.hpp"
 
@@ -9,10 +9,9 @@ namespace sssp {
 
 namespace {
 
-// Meyer and Sanders delta-stepping. A bucket of width delta is relaxed to a
-// fixed point over its light edges (w <= delta), then its heavy edges fire once.
-// The ring is maxw/delta + 2 wide: bucket i only ever writes into buckets i
-// through i + maxw/delta.
+// Meyer and Sanders delta stepping. Each bucket relaxes its light edges
+// (w <= delta) until it stays empty, then its heavy edges once. Bucket i only
+// writes into buckets i to i + maxw/delta, so a ring of maxw/delta + 2 suffices.
 class DeltaStepping : public Solver {
 public:
     const char* name() const override { return "delta"; }
@@ -20,13 +19,18 @@ public:
     void set_delta(int d) override { forced_delta_ = d; }
 
     Run run(const Graph& g, int source) override {
-        Timer t;
         Run r;
-        r.dist.assign(g.n, kInf);
-
+        Timer alloc;
         const int delta = forced_delta_ > 0 ? forced_delta_ : pick_delta(g);
         const int nb = bucket_count(g, delta);
         std::vector<std::vector<int>> bucket(nb);
+        r.dist.reserve(g.n);
+        r.timing.alloc_ms = alloc.ms();
+        r.delta_used = delta;
+
+        Timer t;
+        r.dist.assign(g.n, kInf);
+        Counters& c = r.counters;
 
         int64_t highest = 0;
         auto relax = [&](int v, Weight nd) {
@@ -47,15 +51,18 @@ public:
         for (int64_t idx = 0; idx <= highest; ++idx) {
             auto& b = bucket[idx % nb];
             if (b.empty()) continue;
-            r.rounds++;
+            c.iterations++;
             settled.clear();
 
             while (!b.empty()) {
                 frontier.swap(b);
                 b.clear();
+                c.sync_rounds++;
                 for (int u : frontier) {
-                    if (r.dist[u] / delta != idx) continue;  // moved to a lower bucket
+                    if (r.dist[u] / delta != idx) continue;  // moved lower
                     settled.push_back(u);
+                    c.vertices_expanded++;
+                    c.edges_touched += g.offsets[u + 1] - g.offsets[u];
                     for (int i = g.offsets[u]; i < g.offsets[u + 1]; ++i) {
                         if (g.weights[i] > delta) continue;
                         relax(g.targets[i], r.dist[u] + g.weights[i]);
@@ -63,7 +70,9 @@ public:
                 }
             }
 
+            c.sync_rounds++;
             for (int u : settled) {
+                c.edges_touched += g.offsets[u + 1] - g.offsets[u];
                 for (int i = g.offsets[u]; i < g.offsets[u + 1]; ++i) {
                     if (g.weights[i] <= delta) continue;
                     relax(g.targets[i], r.dist[u] + g.weights[i]);
@@ -71,6 +80,7 @@ public:
             }
         }
 
+        std::vector<std::vector<int>>().swap(bucket);
         r.timing.solve_ms = t.ms();
         return r;
     }

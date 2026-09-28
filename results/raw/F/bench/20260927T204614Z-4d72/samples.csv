@@ -1,0 +1,2 @@
+run_id,graph_id,source,solver,device,mode,session,query_index,rep,warmup,instrumented,order_pos,cache_state,threads,counters_on,delta_used,wall_ms,prep_ms,alloc_ms,h2d_ms,solve_ms,d2h_ms,free_ms,kernel_ms,iterations,sync_rounds,host_syncs,parallel_phases,serial_phases,vertices_expanded,edges_touched,mismatches,dist_hash,gpu_clock_mhz_measured,gpu_foreign_procs,load1
+20260927T204614Z-4d72,fc315e1936c5537b,140379,gpu-topo,gpu,oneshot,,0,0,0,0,0,warm,0,1,0,2341.98027,0,0.491103,4.34262419,2334.38525,1.040179,1.63858,,16,16,16,0,0,13127266,105422164,0,c0b941345e6ac1d7,,0,0.84

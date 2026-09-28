@@ -7,25 +7,34 @@
 
 namespace sssp {
 
-// Phases are kept apart so a GPU solver's kernel time is never confused with
-// what it spent building or moving its inputs.
+// Phase boundaries are described in docs/methodology.md. The caller times
+// release() and the whole run().
 struct Timing {
-    // Host side structures a solver derives for itself, e.g. gpu-edge's
-    // per-arc source array. Zero for solvers that take CSR as it comes.
     double prep_ms = 0.0;
+    double alloc_ms = 0.0;
     double h2d_ms = 0.0;
     double solve_ms = 0.0;
     double d2h_ms = 0.0;
+    double kernel_ms = -1;  // only when instrumented
+};
 
-    double transfer_ms() const { return h2d_ms + d2h_ms; }
-    double total_ms() const { return prep_ms + h2d_ms + solve_ms + d2h_ms; }
+// The work behind the time. The planned model was
+// T ~ alpha * host_syncs + edges_touched / theta.
+struct Counters {
+    int64_t iterations = 0;         // the solver's own outer loop count
+    int64_t sync_rounds = 0;        // rounds that end in a global wait
+    int64_t host_syncs = 0;         // blocking host to device round trips
+    int64_t parallel_phases = 0;    // delta-omp only
+    int64_t serial_phases = 0;      // delta-omp only
+    int64_t vertices_expanded = 0;  // including re-expansions
+    int64_t edges_touched = 0;      // adjacency entries read
 };
 
 struct Run {
     std::vector<Weight> dist;
     Timing timing;
-    // Outer iterations
-    int64_t rounds = 0;
+    Counters counters;
+    int delta_used = 0;
 };
 
 class Solver {
@@ -35,12 +44,12 @@ public:
     virtual const char* device() const = 0;
     virtual Run run(const Graph& g, int source) = 0;
 
-    // pins the bucket width for delta stepping and near-far
     virtual void set_delta(int) {}
-
-    // Solvers holding device state keep it across runs on the same graph and
-    // report prep_ms/h2d_ms of zero from the second run on. release() drops it,
-    // so a caller can measure either the cold cost or the amortised one.
+    // GPU work counters cost an atomic per vertex, so they can be turned off.
+    virtual void set_counters(bool) {}
+    // An event pair around every kernel, which changes the timing.
+    virtual void set_instrument(bool) {}
+    // GPU solvers keep the graph on the device between runs until this.
     virtual void release() {}
 };
 

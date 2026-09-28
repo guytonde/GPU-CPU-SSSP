@@ -42,7 +42,11 @@
 
 bin/
 build/
-results/
+
 .vscode/
-results/
+
 graphs/
+
+# quick-mode pipeline checks are scratch; the study's raw and published results are kept
+results/raw-quick/
+results/published-quick/

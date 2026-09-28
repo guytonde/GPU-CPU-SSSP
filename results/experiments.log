@@ -1,0 +1,220 @@
+[13:38:02 +  0.0m] C0 calibrate
+[13:38:19 +  0.3m] C0 cpu configuration
+[13:38:50 +  0.8m]   cpu config all_physical: delta-omp median 102.87 ms
+[13:39:19 +  1.3m]   cpu config all_logical: delta-omp median 98.13 ms
+[13:39:49 +  1.8m]   cpu config p8_pinned: delta-omp median 173.16 ms
+[13:39:49 +  1.8m]   chose cpu config all_physical
+[13:39:50 +  1.8m] A layered_W16_unit: generated in 0.3s
+[13:42:42 +  4.7m] A layered_W16_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (171.9s)
+[13:42:42 +  4.7m] A layered_W16_w100: generated in 0.3s
+[13:47:16 +  9.2m] A layered_W16_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (273.8s)
+[13:47:16 +  9.2m] A layered_W64_unit: generated in 0.3s
+[13:48:14 + 10.2m] A layered_W64_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (58.2s)
+[13:48:15 + 10.2m] A layered_W64_w100: generated in 0.3s
+[13:49:54 + 11.9m] A layered_W64_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (98.9s)
+[13:49:54 + 11.9m] A layered_W256_unit: generated in 0.3s
+[13:50:24 + 12.4m] A layered_W256_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (30.1s)
+[13:50:24 + 12.4m] A layered_W256_w100: generated in 0.3s
+[13:51:14 + 13.2m] A layered_W256_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (49.6s)
+[13:51:14 + 13.2m] A layered_W1024_unit: generated in 0.3s
+[13:51:38 + 13.6m] A layered_W1024_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (24.1s)
+[13:51:39 + 13.6m] A layered_W1024_w100: generated in 0.3s
+[13:52:16 + 14.2m] A layered_W1024_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (37.8s)
+[13:52:17 + 14.2m] A layered_W4096_unit: generated in 0.3s
+[13:52:39 + 14.6m] A layered_W4096_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (22.6s)
+[13:52:40 + 14.6m] A layered_W4096_w100: generated in 0.4s
+[13:53:12 + 15.2m] A layered_W4096_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (32.4s)
+[13:53:12 + 15.2m] A layered_W16384_unit: generated in 0.3s
+[13:53:32 + 15.5m] A layered_W16384_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (19.7s)
+[13:53:32 + 15.5m] A layered_W16384_w100: generated in 0.3s
+[13:54:03 + 16.0m] A layered_W16384_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (31.0s)
+[13:54:04 + 16.0m] A layered_W65536_unit: generated in 0.3s
+[13:54:21 + 16.3m] A layered_W65536_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (17.0s)
+[13:54:21 + 16.3m] A layered_W65536_w100: generated in 0.3s
+[13:54:51 + 16.8m] A layered_W65536_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (30.1s)
+[13:54:52 + 16.8m] A layered_W262144_unit: generated in 0.3s
+[13:55:07 + 17.1m] A layered_W262144_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (15.2s)
+[13:55:07 + 17.1m] A layered_W262144_w100: generated in 0.3s
+[13:55:33 + 17.5m] A layered_W262144_w100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar,gpu-edge --sources 8 --reps 5 (26.3s)
+[13:55:34 + 17.5m] A layered_W64_w100_natural: generated in 0.3s
+[13:56:56 + 18.9m] A layered_W64_w100_natural: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (82.1s)
+[13:56:57 + 18.9m] A layered_W64_w100_links16: generated in 1.5s
+[13:59:05 + 21.1m] A layered_W64_w100_links16: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (128.2s)
+[13:59:06 + 21.1m] A layered_W1024_w100_natural: generated in 0.3s
+[13:59:27 + 21.4m] A layered_W1024_w100_natural: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (21.5s)
+[13:59:29 + 21.4m] A layered_W1024_w100_links16: generated in 1.4s
+[14:00:42 + 22.7m] A layered_W1024_w100_links16: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (72.9s)
+[14:00:42 + 22.7m] A layered_W16384_w100_natural: generated in 0.3s
+[14:01:01 + 23.0m] A layered_W16384_w100_natural: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (19.0s)
+[14:01:02 + 23.0m] A layered_W16384_w100_links16: generated in 1.6s
+[14:02:04 + 24.0m] A layered_W16384_w100_links16: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (61.2s)
+[14:02:04 + 24.0m] B hub_h0: generated in 0.5s
+[14:02:42 + 24.7m] B hub_h0: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (37.7s)
+[14:02:42 + 24.7m] B hub_h12: generated in 0.5s
+[14:03:21 + 25.3m] B hub_h12: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (38.2s)
+[14:03:21 + 25.3m] B hub_h10: generated in 0.5s
+[14:04:00 + 26.0m] B hub_h10: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (38.5s)
+[14:04:00 + 26.0m] B hub_h8: generated in 0.5s
+[14:04:39 + 26.6m] B hub_h8: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (39.2s)
+[14:04:40 + 26.6m] B hub_h6: generated in 0.5s
+[14:05:21 + 27.3m] B hub_h6: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (41.1s)
+[14:05:22 + 27.3m] B hub_h4: generated in 0.5s
+[14:06:15 + 28.2m] B hub_h4: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (53.3s)
+[14:06:15 + 28.2m] B hub_h2: generated in 0.5s
+[14:07:51 + 29.8m] B hub_h2: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (95.2s)
+[14:07:52 + 29.8m] B rmat_relabeled: generated in 1.1s
+[14:08:11 + 30.2m] B rmat_relabeled: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (19.6s)
+[14:08:12 + 30.2m] B rmat_natural: generated in 1.0s
+[14:08:31 + 30.5m] B rmat_natural: --only dijkstra,delta,delta-omp,bellman-ford,gpu-topo,gpu-edge,gpu-frontier --sources 8 --reps 5 (18.3s)
+[14:08:31 + 30.5m] C uniform_unit: generated in 0.5s
+[14:08:48 + 30.8m] C uniform_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (17.0s)
+[14:08:49 + 30.8m] C uniform_logD1: generated in 0.6s
+[14:09:13 + 31.2m] C uniform_logD1: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (24.6s)
+[14:09:22 + 31.3m] C uniform_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (8.5s)
+[14:09:30 + 31.5m] C uniform_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (8.5s)
+[14:09:40 + 31.6m] C uniform_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (9.8s)
+[14:09:49 + 31.8m] C uniform_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (8.7s)
+[14:09:49 + 31.8m] C uniform_logD2: generated in 0.6s
+[14:10:23 + 32.3m] C uniform_logD2: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (33.1s)
+[14:10:31 + 32.5m] C uniform_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (9.0s)
+[14:10:41 + 32.7m] C uniform_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (9.9s)
+[14:10:59 + 33.0m] C uniform_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (17.6s)
+[14:11:21 + 33.3m] C uniform_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (21.8s)
+[14:11:21 + 33.3m] C uniform_logD4: generated in 0.6s
+[14:12:37 + 34.6m] C uniform_logD4: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (75.1s)
+[14:12:53 + 34.8m] C uniform_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (16.1s)
+[14:13:24 + 35.4m] C uniform_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (31.2s)
+[14:14:00 + 36.0m] C uniform_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (36.0s)
+[14:14:33 + 36.5m] C uniform_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (32.7s)
+[14:14:33 + 36.5m] C uniform_logD6: generated in 0.6s
+[14:16:07 + 38.1m] C uniform_logD6: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (94.0s)
+[14:16:52 + 38.8m] C uniform_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (44.3s)
+[14:17:38 + 39.6m] C uniform_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (46.1s)
+[14:18:21 + 40.3m] C uniform_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (43.1s)
+[14:19:00 + 41.0m] C uniform_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (39.0s)
+[14:19:00 + 41.0m] C uniform_u100: generated in 0.5s
+[14:19:31 + 41.5m] C uniform_u100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (30.5s)
+[14:19:40 + 41.6m] C uniform_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (8.8s)
+[14:19:48 + 41.8m] C uniform_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (8.6s)
+[14:20:00 + 42.0m] C uniform_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (11.6s)
+[14:20:11 + 42.1m] C uniform_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (10.5s)
+[14:20:11 + 42.2m] C uniform_u1e5: generated in 0.5s
+[14:20:45 + 42.7m] C uniform_u1e5: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (33.5s)
+[14:20:54 + 42.9m] C uniform_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (8.9s)
+[14:21:02 + 43.0m] C uniform_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (8.6s)
+[14:21:14 + 43.2m] C uniform_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (11.8s)
+[14:21:25 + 43.4m] C uniform_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (11.0s)
+[14:21:25 + 43.4m] C grid_unit: generated in 0.2s
+[14:21:41 + 43.7m] C grid_unit: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (16.3s)
+[14:21:42 + 43.7m] C grid_logD1: generated in 0.2s
+[14:22:06 + 44.1m] C grid_logD1: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (24.1s)
+[14:22:15 + 44.2m] C grid_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (9.0s)
+[14:22:24 + 44.4m] C grid_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (9.0s)
+[14:22:31 + 44.5m] C grid_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (7.4s)
+[14:22:38 + 44.6m] C grid_logD1: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (7.2s)
+[14:22:38 + 44.6m] C grid_logD2: generated in 0.2s
+[14:23:07 + 45.1m] C grid_logD2: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (28.1s)
+[14:23:18 + 45.3m] C grid_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (11.2s)
+[14:23:28 + 45.4m] C grid_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (10.1s)
+[14:23:37 + 45.6m] C grid_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (9.4s)
+[14:23:50 + 45.8m] C grid_logD2: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (12.5s)
+[14:23:50 + 45.8m] C grid_logD4: generated in 0.2s
+[14:24:41 + 46.7m] C grid_logD4: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (51.3s)
+[14:24:53 + 46.8m] C grid_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (11.3s)
+[14:25:06 + 47.1m] C grid_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (13.3s)
+[14:25:56 + 47.9m] C grid_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (49.6s)
+[14:29:42 + 51.7m] C grid_logD4: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (226.0s)
+[14:29:42 + 51.7m] C grid_logD6: generated in 0.2s
+[14:39:18 + 61.3m] C grid_logD6: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (576.4s)
+[14:39:42 + 61.7m] C grid_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (23.4s)
+[14:40:54 + 62.9m] C grid_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (72.4s)
+[14:46:54 + 68.9m] C grid_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (359.6s)
+[14:53:05 + 75.0m] C grid_logD6: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (370.8s)
+[14:53:05 + 75.0m] C grid_u100: generated in 0.1s
+[14:53:30 + 75.5m] C grid_u100: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (25.7s)
+[14:53:57 + 75.9m] C grid_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (26.7s)
+[14:54:12 + 76.2m] C grid_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (14.4s)
+[14:54:19 + 76.3m] C grid_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (7.6s)
+[14:54:27 + 76.4m] C grid_u100: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (7.6s)
+[14:54:27 + 76.4m] C grid_u1e5: generated in 0.1s
+[14:54:58 + 76.9m] C grid_u1e5: --only dijkstra,dial,delta,delta-omp,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (30.5s)
+[14:55:30 + 77.5m] C grid_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.0625 (32.2s)
+[14:55:44 + 77.7m] C grid_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 0.25 (14.0s)
+[14:55:51 + 77.8m] C grid_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 4 (7.3s)
+[14:55:58 + 77.9m] C grid_u1e5: --only delta,delta-omp,gpu-nearfar --sources 8 --reps 3 --delta-scale 16 (7.3s)
+[14:55:59 + 77.9m] D layered_W256_w100: generated in 0.3s
+[15:01:14 + 83.2m] D layered_W256_w100: --only dial,delta-omp,gpu-frontier,gpu-nearfar --mode resident --queries 128 --reps 3 (315.7s)
+[15:02:06 + 84.1m] D layered_W256_w100: --only dijkstra,dial --mode batch --queries 128 --reps 3 (51.3s)
+[15:02:06 + 84.1m] D layered_W4096_w100: generated in 0.3s
+[15:04:07 + 86.1m] D layered_W4096_w100: --only dial,delta-omp,gpu-frontier,gpu-nearfar --mode resident --queries 128 --reps 3 (120.8s)
+[15:05:09 + 87.1m] D layered_W4096_w100: --only dijkstra,dial --mode batch --queries 128 --reps 3 (62.0s)
+[15:05:09 + 87.1m] D layered_W65536_w100: generated in 0.3s
+[15:07:00 + 89.0m] D layered_W65536_w100: --only dial,delta-omp,gpu-frontier,gpu-nearfar --mode resident --queries 128 --reps 3 (110.6s)
+[15:08:19 + 90.3m] D layered_W65536_w100: --only dijkstra,dial --mode batch --queries 128 --reps 3 (79.1s)
+[15:08:20 + 90.3m] D uniform_w100: generated in 0.5s
+[15:10:16 + 92.2m] D uniform_w100: --only dial,delta-omp,gpu-frontier,gpu-nearfar --mode resident --queries 128 --reps 3 (116.0s)
+[15:11:39 + 93.6m] D uniform_w100: --only dijkstra,dial --mode batch --queries 128 --reps 3 (83.9s)
+[15:11:40 + 93.6m] D grid_w100: generated in 0.1s
+[15:14:13 + 96.2m] D grid_w100: --only dial,delta-omp,gpu-frontier,gpu-nearfar --mode resident --queries 128 --reps 3 (153.9s)
+[15:14:46 + 96.7m] D grid_w100: --only dijkstra,dial --mode batch --queries 128 --reps 3 (32.8s)
+[15:14:46 + 96.7m] E uniform_n2e16: generated in 0.0s
+[15:14:48 + 96.8m] E uniform_n2e16: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (1.2s)
+[15:14:48 + 96.8m] E grid_n2e16: generated in 0.0s
+[15:14:50 + 96.8m] E grid_n2e16: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (2.0s)
+[15:14:50 + 96.8m] E uniform_n2e17: generated in 0.1s
+[15:14:52 + 96.8m] E uniform_n2e17: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (1.9s)
+[15:14:52 + 96.8m] E grid_n2e17: generated in 0.0s
+[15:14:55 + 96.9m] E grid_n2e17: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (3.3s)
+[15:14:55 + 96.9m] E uniform_n2e18: generated in 0.1s
+[15:14:58 + 96.9m] E uniform_n2e18: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (3.4s)
+[15:15:07 + 97.1m] E uniform_n2e18: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 --cache flushed (8.1s)
+[15:15:07 + 97.1m] E grid_n2e18: generated in 0.0s
+[15:15:11 + 97.2m] E grid_n2e18: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (4.5s)
+[15:15:11 + 97.2m] E uniform_n2e19: generated in 0.3s
+[15:15:19 + 97.3m] E uniform_n2e19: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (7.3s)
+[15:15:19 + 97.3m] E grid_n2e19: generated in 0.1s
+[15:15:28 + 97.4m] E grid_n2e19: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (8.8s)
+[15:15:28 + 97.4m] E uniform_n2e20: generated in 0.5s
+[15:15:46 + 97.7m] E uniform_n2e20: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (17.7s)
+[15:16:08 + 98.1m] E uniform_n2e20: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 --cache flushed (22.3s)
+[15:16:08 + 98.1m] E grid_n2e20: generated in 0.1s
+[15:16:25 + 98.4m] E grid_n2e20: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (17.0s)
+[15:16:26 + 98.4m] E uniform_n2e21: generated in 1.1s
+[15:17:08 + 99.1m] E uniform_n2e21: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (41.8s)
+[15:17:08 + 99.1m] E grid_n2e21: generated in 0.3s
+[15:17:50 + 99.8m] E grid_n2e21: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (41.0s)
+[15:17:52 + 99.8m] E uniform_n2e22: generated in 2.3s
+[15:19:32 +101.5m] E uniform_n2e22: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (100.1s)
+[15:21:17 +103.2m] E uniform_n2e22: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 --cache flushed (104.9s)
+[15:21:18 +103.3m] E grid_n2e22: generated in 0.6s
+[15:22:55 +104.9m] E grid_n2e22: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 5 (97.2s)
+[15:23:00 +105.0m] E uniform_n2e23: generated in 5.1s
+[15:25:40 +107.6m] E uniform_n2e23: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 3 (159.7s)
+[15:25:41 +107.7m] E grid_n2e23: generated in 1.4s
+[15:28:28 +110.4m] E grid_n2e23: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 3 (167.1s)
+[15:28:39 +110.6m] E uniform_n2e24: generated in 11.2s
+[15:34:34 +116.5m] E uniform_n2e24: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 3 (354.4s)
+[15:34:37 +116.6m] E grid_n2e24: generated in 3.1s
+[15:40:39 +122.6m] E grid_n2e24: --only dijkstra,dial,delta-omp,gpu-frontier,gpu-nearfar --sources 6 --reps 3 (361.7s)
+[15:40:39 +122.6m] HO grid_natural: generated in 0.1s
+[15:41:04 +123.0m] HO grid_natural: --only dijkstra,dial,delta,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (25.6s)
+[15:41:04 +123.0m] HO grid_relabeled: generated in 0.2s
+[15:41:40 +123.6m] HO grid_relabeled: --only dijkstra,dial,delta,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (35.2s)
+[15:41:40 +123.6m] HO geometric: generated in 0.7s
+[15:42:40 +124.6m] HO geometric: --only dijkstra,dial,delta,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (59.3s)
+[15:42:40 +124.6m] HO uniform: generated in 0.5s
+[15:43:13 +125.2m] HO uniform: --only dijkstra,dial,delta,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (32.4s)
+[15:43:14 +125.2m] HO rmat: generated in 1.1s
+[15:43:31 +125.5m] HO rmat: --only dijkstra,dial,delta,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --sources 8 --reps 5 (17.7s)
+[15:43:32 +125.5m] T grid_unit: generated in 0.1s
+[15:43:36 +125.6m] T grid_unit: --only dial,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --reps 3 --sources 4 --instrument (4.8s)
+[15:43:37 +125.6m] T layered_W65536_w100: generated in 0.4s
+[15:43:41 +125.7m] T layered_W65536_w100: --only dial,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --reps 3 --sources 4 --instrument (4.7s)
+[15:43:42 +125.7m] T uniform_logD6: generated in 0.6s
+[15:43:49 +125.8m] T uniform_logD6: --only dial,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --reps 3 --sources 4 --instrument (7.5s)
+[15:43:50 +125.8m] T hub_h6: generated in 0.5s
+[15:43:57 +125.9m] T hub_h6: --only dial,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --reps 3 --sources 4 --instrument (6.8s)
+[15:43:59 +126.0m] T uniform_big: generated in 2.4s
+[15:44:25 +126.4m] T uniform_big: --only dial,delta-omp,gpu-topo,gpu-edge,gpu-frontier,gpu-nearfar --reps 3 --sources 4 --instrument (26.1s)
+[15:44:25 +126.4m] done
+exit=0

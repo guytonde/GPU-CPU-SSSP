@@ -4,7 +4,6 @@
 
 namespace sssp {
 
-// basically a wrapper for std::chrono::steady_clock to make it easier to time things in milliseconds
 class Timer {
 public:
     Timer() { reset(); }
