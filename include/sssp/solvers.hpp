@@ -45,7 +45,7 @@ int cpu_threads();
 // Mean time of a round of `launches` empty kernels, an optional memset and
 // `syncs` blocking 4 byte copies.
 double gpu_round_overhead_us(int launches, int syncs, bool memset, int iterations);
-double gpu_copy_ms(size_t bytes, bool pinned, bool to_device, int reps);
+double gpu_upload_ms(size_t bytes, bool pinned, int reps);
 // Kernel time and whole round time of one gpu-frontier round on `queue`.
 struct RoundTiming {
     double kernel_us = 0.0;

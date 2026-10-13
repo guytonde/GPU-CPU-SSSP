@@ -6,8 +6,8 @@
   "threads_effective": 24,
   "rule": "fewest threads among configurations within 5% of the fastest delta-omp median",
   "medians_ms": {
-    "all_physical": 102.875,
-    "all_logical": 98.129,
-    "p8_pinned": 173.156
+    "all_physical": 97.654,
+    "all_logical": 97.565,
+    "p8_pinned": 168.986
   }
 }

@@ -147,7 +147,6 @@ public:
         Staged staged(cpu_threads(), Buckets(nb));
         r.dist.reserve(g.n);
         r.timing.alloc_ms = alloc.ms();
-        r.delta_used = delta;
 
         Timer t;
         r.dist.assign(g.n, kInf);

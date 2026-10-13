@@ -16,7 +16,6 @@ double load1();
 
 // GPU state from NVML, which is loaded at run time. -1 when unavailable.
 struct GpuSample {
-    int util_pct = -1;
     int foreign_procs = -1;  // compute processes on the GPU other than this one
 };
 GpuSample gpu_sample();

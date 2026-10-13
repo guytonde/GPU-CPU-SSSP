@@ -1,0 +1,2 @@
+run_id,graph_id,source,solver,device,mode,session,query_index,rep,warmup,instrumented,wall_ms,prep_ms,alloc_ms,h2d_ms,solve_ms,d2h_ms,free_ms,kernel_ms,iterations,sync_rounds,host_syncs,parallel_phases,serial_phases,vertices_expanded,edges_touched,mismatches,dist_hash,gpu_clock_mhz_measured,gpu_foreign_procs,load1
+20261005T025923Z-4bd9,546ebf08dc181db3,561519,gpu-frontier,gpu,oneshot,,0,0,0,0,3285.46869,0,0.542151,17.1869431,3255.58423,4.383255,7.654244,,32,32,32,0,0,15490708,124554078,0,8062a200dc12272a,,0,0.56

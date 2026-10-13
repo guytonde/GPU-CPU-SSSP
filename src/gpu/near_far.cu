@@ -31,7 +31,7 @@ __global__ void expand_split(const int* __restrict__ offsets,
         Weight du = dist[u];
         int begin = offsets[u];
         int len = offsets[u + 1] - begin;
-        if (work && lane == 0) atomicAdd(work, (unsigned long long)len);
+        if (lane == 0) atomicAdd(work, (unsigned long long)len);
 
         for (int off = lane; off < round_up(len, kWarp); off += kWarp) {
             int v = -1;
@@ -80,7 +80,6 @@ public:
     const char* name() const override { return "gpu-nearfar"; }
     const char* device() const override { return "gpu"; }
     void set_delta(int d) override { forced_delta_ = d; }
-    void set_counters(bool on) override { counters_ = on; }
     void set_instrument(bool on) override { clock_.enable(on); }
 
     Run run(const Graph& g, int source) override {
@@ -101,9 +100,7 @@ public:
         }
         const DeviceCsr& d = csr_.get();
         const Weight delta = forced_delta_ > 0 ? forced_delta_ : pick_delta(g);
-        r.delta_used = delta;
-        unsigned long long* work = counters_ ? d_work_.get() : nullptr;
-        if (work) d_work_.fill_zero();
+        d_work_.fill_zero();
         clock_.reset();
 
         int* d_near = counters_buf_.get();
@@ -142,7 +139,7 @@ public:
                 expand_split<<<grid_for(int64_t(near) * kWarp), kBlock>>>(
                     d.offsets.get(), d.targets.get(), d.weights.get(),
                     d_dist_.get(), near_cur, near, threshold, d_queued_.get(),
-                    near_new, d_near, far_cur, d_far, work);
+                    near_new, d_near, far_cur, d_far, d_work_.get());
                 clock_.stop();
 
                 near = device_get(d_near);
@@ -182,7 +179,7 @@ public:
         if (clock_.enabled()) r.timing.kernel_ms = clock_.total_ms();
 
         r.timing.d2h_ms = download_result(d_dist_, r.dist, g.n);
-        if (work) c.edges_touched = read_counter(d_work_);
+        c.edges_touched = read_counter(d_work_);
         return r;
     }
 
@@ -200,7 +197,6 @@ public:
 
 private:
     int forced_delta_ = 0;
-    bool counters_ = true;
     KernelClock clock_;
     ResidentCsr csr_;
     DeviceBuffer<Weight> d_dist_;

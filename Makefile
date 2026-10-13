@@ -5,7 +5,6 @@ NVCCFLAGS ?= -std=c++17 -O3 -lineinfo
 DEPFLAGS := -MMD -MP
 OMPFLAGS := -fopenmp
 INCLUDES := -Iinclude
-PYTHON   ?= python3
 
 # The installed card's compute capability, or a spread of common ones.
 ARCHS ?= $(or $(shell nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d .),70 75 80 86 89)
@@ -22,9 +21,9 @@ CUDA_OBJ := $(CUDA_SRC:%.cu=$(BUILD)/%.o)
 
 # Use the first nvcc that compiles a trivial file with the host compiler.
 # NO_CUDA=1 builds CPU only.
-CUDA_SEARCH := $(NVCC) $(wildcard /usr/local/cuda*/bin/nvcc /lusr/opt/cuda-*/bin/nvcc)
+CUDA_SEARCH := $(NVCC) $(wildcard /usr/local/cuda*/bin/nvcc)
 
-ifneq ($(filter clean distclean,$(MAKECMDGOALS)),)
+ifneq ($(filter clean,$(MAKECMDGOALS)),)
   NO_CUDA := 1
 endif
 
@@ -107,45 +106,8 @@ $(BIN)/test_sssp: $(BUILD)/tests/test_sssp.o $(OBJ)
 test: $(BIN)/test_sssp
 	./$(BIN)/test_sssp
 
-.PHONY: cpu
-cpu:
-	$(MAKE) NO_CUDA=1 all
-
-.PHONY: smoke
-smoke: all
-	./$(BIN)/test_sssp
-	$(PYTHON) tools/experiments.py --quick smoke
-
-# Everything except experiment F, which needs sudo (tools/profile.sh).
-.PHONY: reproduce
-reproduce: all
-	./$(BIN)/test_sssp
-	$(PYTHON) tools/experiments.py all
-	$(PYTHON) tools/analyze.py
-	$(PYTHON) tools/plot.py
-
-.PHONY: analyze
-analyze:
-	$(PYTHON) tools/analyze.py
-
-.PHONY: figures
-figures:
-	$(PYTHON) tools/plot.py
-
-.PHONY: info
-info:
-	@echo "nvcc:    $(if $(NVCC_PICK),$(NVCC_PICK),none usable, building cpu-only)"
-	@echo "version: $(if $(NVCC_PICK),$(shell $(NVCC) --version | tail -1),-)"
-	@echo "host cc: $(shell $(CXX) --version | head -1)"
-	@echo "archs:   $(ARCHS)"
-	@echo "git:     $(GIT_SHA) dirty=$(GIT_DIRTY) diff=$(DIFF_HASH)"
-
 -include $(DEPS)
 
 .PHONY: clean
 clean:
 	rm -rf $(BUILD) $(BIN)
-
-.PHONY: distclean
-distclean: clean
-	rm -rf graphs

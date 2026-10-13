@@ -1,0 +1,2 @@
+run_id,graph_id,topo_hash,weights_hash,path,n,m,deg_max,generator,gen_git_sha,gen_git_dirty,topology,m_requested,m_undirected,seed,wseed,rseed,relabel,wdist,wmin,wmax,decades,rows,cols,layer_width,layer_links,hub_fraction
+20261005T011040Z-945e,c43e27a0659a0e37,930bb61d2e8c0ee3,082a1d5edb6dd7b9,/home/jacob/Documents/GPU-CPU-SSSP/graphs/study/A_layered_W64_w100_links16.bin,1048576,33552384,49,gen_graph/2,d95e4d2dd662031ca0ae293b49f89a743505e66f,1,layered,0,16776192,1,11400714819323198484,14029467366897019726,1,uniform,1,100,,,,64,16,

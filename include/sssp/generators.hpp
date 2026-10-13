@@ -24,11 +24,10 @@ struct GenSpec {
     uint64_t wseed = 0;                  // 0 derives it from seed
     uint64_t rseed = 0;                  // 0 derives it from seed
     bool relabel = true;
-    bool directed = false;
 };
 
 // Topologies: uniform (G(n,m)), rmat (a,b,c = .57,.19,.19), grid (row major),
-// geometric (points in the unit square within a radius), chain, star,
+// geometric (points in the unit square within a radius), star,
 // layered (n/W layers of width W, each vertex linked to layer_links vertices of
 // the next layer, layer 0 recorded in meta "sources"), and hub (G(n,m) with
 // hub_fraction of the edges moved onto vertex 0). None get a spanning tree.

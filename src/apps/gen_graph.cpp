@@ -12,7 +12,7 @@ namespace {
 void usage() {
     std::cout << R"(usage: gen_graph --topo T --n N [options] --out PATH.bin
 
-  --topo T            uniform | rmat | grid | geometric | chain | star | layered | hub
+  --topo T            uniform | rmat | grid | geometric | star | layered | hub
   --n N               vertices (grid: rounded to a square unless --rows/--cols)
   --m M               undirected edges requested (uniform, rmat, geometric, hub)
   --rows R --cols C   grid shape
@@ -26,8 +26,7 @@ void usage() {
   --wseed S           weight seed (default: derived from --seed)
   --rseed S           relabeling seed (default: derived from --seed)
   --no-relabel        keep the generator's natural vertex order
-  --directed          emit each edge once instead of both ways
-  --out PATH          .bin writes CSR with provenance; anything else a text edge list
+  --out PATH          output file
 
 Weights come from their own random stream, so changing --wdist, --wmin/--wmax
 or --decades leaves the topology bit-identical (same topo_hash). No topology
@@ -66,7 +65,6 @@ int main(int argc, char** argv) {
             else if (a == "--wseed") s.wseed = std::stoull(next());
             else if (a == "--rseed") s.rseed = std::stoull(next());
             else if (a == "--no-relabel") s.relabel = false;
-            else if (a == "--directed") s.directed = true;
             else if (a == "--out") out = next();
             else throw std::runtime_error("unknown option " + a);
         }

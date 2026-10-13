@@ -21,7 +21,7 @@ using namespace sssp;
 namespace fs = std::filesystem;
 
 // C0: the cost of an empty round, a frontier round by size, one thread walking
-// a hub, copies to and from the GPU, and an empty OpenMP parallel region.
+// a hub, copies to the GPU, and an empty OpenMP parallel region.
 
 namespace {
 
@@ -47,35 +47,22 @@ double median(std::vector<double> v) {
     return v.empty() ? 0.0 : v[v.size() / 2];
 }
 
+// The round of gpu-frontier without graph work: a memset, two launches and one
+// blocking copy.
 void round_overhead(Out& out) {
-    struct Pattern {
-        const char* name;
-        int launches, syncs;
-        bool memset;
-    };
-    // The rounds of gpu-frontier and of the inner loop of gpu-nearfar.
-    const Pattern patterns[] = {{"sync_only", 0, 1, false},
-                                {"frontier_round", 2, 1, true},
-                                {"nearfar_inner", 2, 2, false}};
-    for (const auto& p : patterns) {
-        for (int rep = 0; rep < 5; ++rep) {
-            gpu_preheat();
-            double us = gpu_round_overhead_us(p.launches, p.syncs, p.memset, 20000);
-            out.put("round_overhead", p.name, p.syncs, rep, us, "us");
-        }
-        std::cout << "  round " << p.name << " done\n";
+    for (int rep = 0; rep < 5; ++rep) {
+        gpu_preheat();
+        out.put("round_overhead", "frontier_round", 1, rep, gpu_round_overhead_us(2, 1, true, 20000), "us");
     }
+    std::cout << "  round overhead done\n";
 }
 
 void copies(Out& out) {
-    for (int shift = 20; shift <= 30; shift += 2) {
+    for (int shift : {20, 24, 30}) {
         size_t bytes = size_t(1) << shift;
         for (bool pinned : {false, true}) {
-            for (bool h2d : {true, false}) {
-                double ms = gpu_copy_ms(bytes, pinned, h2d, 5);
-                std::string name = std::string(h2d ? "h2d" : "d2h") + (pinned ? "_pinned" : "_pageable");
-                out.put("copy", name, double(bytes), 0, ms, "ms");
-            }
+            double ms = gpu_upload_ms(bytes, pinned, 5);
+            out.put("copy", pinned ? "h2d_pinned" : "h2d_pageable", double(bytes), 0, ms, "ms");
         }
     }
     std::cout << "  copies done\n";
@@ -106,42 +93,35 @@ void hub_latency(Out& out) {
     s.relabel = false;  // so vertex 0 is the hub
     Graph g = generate(s);
     const int hub = 0;
-    for (const char* name : {"gpu-topo", "gpu-frontier"}) {
-        const SolverEntry* e = find_solver(name);
-        if (!e) continue;
-        auto solver = e->make();
-        solver->run(g, hub);
-        std::vector<double> per_edge;
-        for (int rep = 0; rep < 5; ++rep) {
-            gpu_preheat();
-            Run r = solver->run(g, hub);
-            // gpu-topo walks the hub once per round, gpu-frontier once.
-            double walks = std::string(name) == "gpu-topo" ? double(r.counters.iterations) : 1.0;
-            per_edge.push_back(r.timing.solve_ms * 1e6 / (walks * g.degree(hub)));
-        }
-        out.put("hub_latency", name, double(g.degree(hub)), 0, median(per_edge), "ns_per_edge");
+    // gpu-topo gives the hub one thread, which walks it once per round.
+    auto solver = find_solver("gpu-topo")->make();
+    solver->run(g, hub);
+    std::vector<double> per_edge;
+    for (int rep = 0; rep < 5; ++rep) {
+        gpu_preheat();
+        Run r = solver->run(g, hub);
+        per_edge.push_back(r.timing.solve_ms * 1e6 / (double(r.counters.iterations) * g.degree(hub)));
     }
+    out.put("hub_latency", "gpu-topo", double(g.degree(hub)), 0, median(per_edge), "ns_per_edge");
     std::cout << "  hub latency done\n";
 }
 
+// At the thread count the OpenMP solvers use.
 void omp_regions(Out& out) {
-    int max_threads = omp_get_num_procs();
-    for (int t : {1, 2, 4, 8, 16, 24, 32}) {
-        if (t > max_threads) continue;
-        for (int rep = 0; rep < 5; ++rep) {
-            const int iters = 20000;
-            volatile int sink = 0;
-            for (int i = 0; i < 200; ++i) {
+    const int t = cpu_threads();
+    const int iters = 20000;
+    volatile int sink = 0;
+    for (int rep = 0; rep < 5; ++rep) {
+        for (int i = 0; i < 200; ++i) {
 #pragma omp parallel num_threads(t)
-                { sink = sink + 1; }
-            }
-            Timer timer;
-            for (int i = 0; i < iters; ++i) {
-#pragma omp parallel num_threads(t)
-                { sink = sink + 1; }
-            }
-            out.put("omp_region", "threads", t, rep, timer.ms() * 1e3 / iters, "us");
+            { sink = sink + 1; }
         }
+        Timer timer;
+        for (int i = 0; i < iters; ++i) {
+#pragma omp parallel num_threads(t)
+            { sink = sink + 1; }
+        }
+        out.put("omp_region", "threads", t, rep, timer.ms() * 1e3 / iters, "us");
     }
     std::cout << "  omp regions done\n";
 }

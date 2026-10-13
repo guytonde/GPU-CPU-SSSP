@@ -47,6 +47,7 @@ build/
 
 graphs/
 
-# quick-mode pipeline checks are scratch; the study's raw and published results are kept
+# quick runs and hand runs; the study's raw and published results are kept
 results/raw-quick/
-results/published-quick/
+results/adhoc/
+results/raw/adhoc/

@@ -5,8 +5,8 @@ namespace sssp {
 
 namespace {
 
-// One thread per vertex, every reached vertex every round. `work`, when set,
-// counts the edges and vertices scanned.
+// One thread per vertex, every reached vertex every round. `work` counts the
+// edges and vertices scanned.
 __global__ void relax_by_vertex(const int* __restrict__ offsets,
                                 const int* __restrict__ targets,
                                 const Weight* __restrict__ weights,
@@ -26,10 +26,8 @@ __global__ void relax_by_vertex(const int* __restrict__ offsets,
             if (nd < atomicMin(&dist[targets[i]], nd)) *changed = 1;
         }
     }
-    if (work) {
-        warp_count(&work[0], edges);
-        warp_count(&work[1], verts);
-    }
+    warp_count(&work[0], edges);
+    warp_count(&work[1], verts);
 }
 
 // One thread per edge, so a hub's edges are spread over many threads.
@@ -63,7 +61,6 @@ public:
         return edge_parallel_ ? "gpu-edge" : "gpu-topo";
     }
     const char* device() const override { return "gpu"; }
-    void set_counters(bool on) override { counters_ = on; }
     void set_instrument(bool on) override { clock_.enable(on); }
 
     Run run(const Graph& g, int source) override {
@@ -91,8 +88,7 @@ public:
             r.timing.alloc_ms += alloc.ms();
         }
         const DeviceCsr& d = csr_.get();
-        unsigned long long* work = counters_ && !edge_parallel_ ? d_work_.get() : nullptr;
-        if (work) d_work_.fill_zero();
+        if (!edge_parallel_) d_work_.fill_zero();
         clock_.reset();
 
         GpuTimer solve;
@@ -115,7 +111,7 @@ public:
             } else {
                 relax_by_vertex<<<vgrid, kBlock>>>(
                     d.offsets.get(), d.targets.get(), d.weights.get(),
-                    d_dist_.get(), g.n, d_changed_.get(), work);
+                    d_dist_.get(), g.n, d_changed_.get(), d_work_.get());
             }
             clock_.stop();
             d_changed_.copy_to(&changed, 1);
@@ -133,7 +129,7 @@ public:
 
         if (edge_parallel_) {
             c.edges_touched = d.m * c.iterations;
-        } else if (work) {
+        } else {
             c.edges_touched = read_counter(d_work_, 0);
             c.vertices_expanded = read_counter(d_work_, 1);
         }
@@ -150,7 +146,6 @@ public:
 
 private:
     bool edge_parallel_;
-    bool counters_ = true;
     KernelClock clock_;
     ResidentCsr csr_;
     DeviceBuffer<int> d_sources_;

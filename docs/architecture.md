@@ -4,7 +4,7 @@
 include/sssp/        headers
   graph.hpp          CSR graph, graph files with their parameters, content hashes
   generators.hpp     graph generators
-  stats.hpp          graph and per source statistics
+  stats.hpp          per source statistics
   reference.hpp      Bellman Ford and Dijkstra references
   solver.hpp         solver interface, timing phases, work counters
   solvers.hpp        solver factories, GPU helpers, calibration entry points
@@ -32,7 +32,6 @@ class Solver {
     virtual const char* device() const = 0;             // "cpu" or "gpu"
     virtual Run run(const Graph& g, int source) = 0;    // distances, timing, counters
     virtual void set_delta(int);        // bucket width for the delta stepping solvers
-    virtual void set_counters(bool);    // GPU work counters on or off
     virtual void set_instrument(bool);  // time every kernel
     virtual void release();             // free device memory
 };

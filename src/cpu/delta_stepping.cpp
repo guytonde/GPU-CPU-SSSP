@@ -26,7 +26,6 @@ public:
         std::vector<std::vector<int>> bucket(nb);
         r.dist.reserve(g.n);
         r.timing.alloc_ms = alloc.ms();
-        r.delta_used = delta;
 
         Timer t;
         r.dist.assign(g.n, kInf);

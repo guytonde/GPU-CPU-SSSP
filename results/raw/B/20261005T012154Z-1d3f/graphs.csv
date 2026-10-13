@@ -1,0 +1,2 @@
+run_id,graph_id,topo_hash,weights_hash,path,n,m,deg_max,generator,gen_git_sha,gen_git_dirty,topology,m_requested,m_undirected,seed,wseed,rseed,relabel,wdist,wmin,wmax,decades,rows,cols,layer_width,layer_links,hub_fraction
+20261005T012154Z-1d3f,78e373c9b6a58208,c40a41944f71b7a8,6cb82706281ae4d6,/home/jacob/Documents/GPU-CPU-SSSP/graphs/study/B_rmat_natural.bin,1048576,8175464,23320,gen_graph/2,d95e4d2dd662031ca0ae293b49f89a743505e66f,1,rmat,4194304,4087732,1,11400714819323198484,14029467366897019726,0,uniform,1,100,,,,,,

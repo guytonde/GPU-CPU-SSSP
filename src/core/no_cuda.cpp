@@ -12,7 +12,7 @@ void gpu_warmup() {}
 void gpu_flush_l2() {}
 double gpu_preheat() { return 0.0; }
 double gpu_round_overhead_us(int, int, bool, int) { return 0.0; }
-double gpu_copy_ms(size_t, bool, bool, int) { return 0.0; }
+double gpu_upload_ms(size_t, bool, int) { return 0.0; }
 RoundTiming gpu_frontier_round(const Graph&, const std::vector<int>&, int) { return {}; }
 
 }  // namespace sssp

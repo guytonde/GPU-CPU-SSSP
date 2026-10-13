@@ -151,12 +151,9 @@ namespace {
 struct Nvml {
     bool ok = false;
     nvmlDevice_t dev{};
-    decltype(&nvmlDeviceGetMaxClockInfo) max_clock = nullptr;
-    decltype(&nvmlDeviceGetUtilizationRates) util = nullptr;
     decltype(&nvmlDeviceGetComputeRunningProcesses_v3) procs = nullptr;
     decltype(&nvmlDeviceGetMaxPcieLinkGeneration) pcie_gen_max = nullptr;
     decltype(&nvmlDeviceGetCurrPcieLinkWidth) pcie_width = nullptr;
-    decltype(&nvmlDeviceGetPowerManagementLimit) power_limit = nullptr;
     decltype(&nvmlSystemGetDriverVersion) driver = nullptr;
 
     Nvml() {
@@ -169,12 +166,9 @@ struct Nvml {
         decltype(&nvmlDeviceGetHandleByIndex_v2) handle = nullptr;
         load(init, "nvmlInit_v2");
         load(handle, "nvmlDeviceGetHandleByIndex_v2");
-        load(max_clock, "nvmlDeviceGetMaxClockInfo");
-        load(util, "nvmlDeviceGetUtilizationRates");
         load(procs, "nvmlDeviceGetComputeRunningProcesses_v3");
         load(pcie_gen_max, "nvmlDeviceGetMaxPcieLinkGeneration");
         load(pcie_width, "nvmlDeviceGetCurrPcieLinkWidth");
-        load(power_limit, "nvmlDeviceGetPowerManagementLimit");
         load(driver, "nvmlSystemGetDriverVersion");
         if (!init || !handle || init() != NVML_SUCCESS) return;
         unsigned index = 0;
@@ -197,8 +191,6 @@ GpuSample gpu_sample() {
     GpuSample s;
     Nvml& n = nvml();
     if (!n.ok) return s;
-    nvmlUtilization_t u{};
-    if (n.util && n.util(n.dev, &u) == NVML_SUCCESS) s.util_pct = int(u.gpu);
     if (n.procs) {
         nvmlProcessInfo_t info[64];
         unsigned count = 64;
@@ -219,16 +211,10 @@ KeyValues gpu_nvml_info() {
     char buf[96] = {0};
     if (n.driver && n.driver(buf, sizeof(buf)) == NVML_SUCCESS) kv.emplace_back("nvidia_driver", buf);
     unsigned v = 0;
-    if (n.max_clock && n.max_clock(n.dev, NVML_CLOCK_SM, &v) == NVML_SUCCESS)
-        kv.emplace_back("gpu_sm_clock_max_mhz", std::to_string(v));
-    if (n.max_clock && n.max_clock(n.dev, NVML_CLOCK_MEM, &v) == NVML_SUCCESS)
-        kv.emplace_back("gpu_mem_clock_max_mhz", std::to_string(v));
     if (n.pcie_gen_max && n.pcie_gen_max(n.dev, &v) == NVML_SUCCESS)
         kv.emplace_back("pcie_gen_max", std::to_string(v));
     if (n.pcie_width && n.pcie_width(n.dev, &v) == NVML_SUCCESS)
         kv.emplace_back("pcie_width", std::to_string(v));
-    if (n.power_limit && n.power_limit(n.dev, &v) == NVML_SUCCESS)
-        kv.emplace_back("gpu_power_limit_w", std::to_string(v / 1000));
     return kv;
 }
 

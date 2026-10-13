@@ -9,7 +9,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -25,10 +25,6 @@ plt.rcParams.update({
 COLOR = {"gpu-frontier": "C0", "gpu-nearfar": "C1", "gpu-topo": "C3", "gpu-edge": "C2",
          "delta-omp": "C4", "dial": "C5", "dijkstra": "C7"}
 times = FuncFormatter(lambda v, _: f"{v:g}x")
-
-
-def gmean(x):
-    return float(np.exp(np.mean(np.log(x))))
 
 
 def log2_axes(ax, x=True, y=True):
@@ -49,27 +45,30 @@ def speedup_vs_parallelism(d, out):
     ax.plot(unit.Pi, 2 ** unit.log2_Sinf, "o-", color="C7", label="layered, unit weights")
     err = [2 ** w100.log2_Sinf - 2 ** w100.log2_Sinf_lo, 2 ** w100.log2_Sinf_hi - 2 ** w100.log2_Sinf]
     ax.errorbar(w100.Pi, 2 ** w100.log2_Sinf, yerr=err, fmt="s-", color="C0", capsize=2,
-                label="layered, weights 1-100")
-    ax.plot(w100.Pi, 2 ** w100.log2_S1, "s--", color="C0", mfc="none", label="same, one-shot (incl. upload)")
-    ax.plot(w100.Pi, 2 ** w100.log2_Sinf_model, ":", color="k", label="model, no wasted work")
+                label="layered, weights 1 to 100")
+    ax.plot(w100.Pi, 2 ** w100.log2_S1, "s--", color="C0", mfc="none", label="weights 1 to 100, one shot (with upload)")
+    ax.plot(w100.Pi, 2 ** w100.log2_Sinf_model, ":", color="k", label="model for weights 1 to 100, no wasted work")
 
     ho = pg[pg.experiment == "HO"]
     marks = {"grid": "D", "geometric": "^", "uniform": "v", "rmat": "P"}
     for _, r in ho.iterrows():
-        name = r.topology + (" (row-major)" if "natural" in r.label else "")
+        if r.topology == "grid":
+            name = "grid, row major numbering" if "natural" in r.label else "grid, random numbering"
+        else:
+            name = r.topology
         mk = "d" if "natural" in r.label else marks.get(r.topology, "o")
         ax.plot(r.Pi, 2 ** r.log2_Sinf, mk, color="C3", mfc="none", ms=7, label=name)
 
     ax.axhline(1, color="k", lw=0.8)
     log2_axes(ax)
-    ax.set_xlabel("useful parallelism Π (useful arcs / shortest-path hop depth)")
-    ax.set_ylabel("speedup, GPU / CPU (see docs/results.md)")
-    ax.set_title("GPU vs CPU speedup, n = 2^20")
+    ax.set_xlabel("useful parallelism Π (useful edges / shortest path hop depth)")
+    ax.set_ylabel("resident speedup (CPU time / GPU time)")
+    ax.set_title("Speedup against useful parallelism, n = 2^20")
     handles, labels = ax.get_legend_handles_labels()
-    first = labels.index("layered, weights 1-100")
+    first = labels.index("layered, weights 1 to 100")
     order = [first] + [i for i in range(len(labels)) if i != first]
-    ax.legend([handles[i] for i in order], [labels[i] for i in order], loc="lower right",
-              title="red: held-out graphs", title_fontsize=8)
+    ax.legend([handles[i] for i in order], [labels[i] for i in order], loc="upper left",
+              bbox_to_anchor=(1.01, 1), title="red: held out graphs", title_fontsize=8)
     fig.savefig(out / "speedup_vs_parallelism.png")
     plt.close(fig)
 
@@ -83,7 +82,7 @@ def sync_cost(d, out):
         for w, style in [("unit", "-"), ("u[1,100]", "--")]:
             s = a[(a.solver == solver) & (a.wlabel == w)]
             g = s.groupby("layer_width").median(numeric_only=True).sort_values("bfs_frontier_wmean")
-            lab = f"{solver}, {'unit' if w == 'unit' else '1-100'}"
+            lab = f"{solver}, {'unit' if w == 'unit' else '1 to 100'}"
             l.plot(g.bfs_frontier_wmean, g.solve_ms, "o" + style, color=COLOR[solver],
                    mfc="none" if w != "unit" else None, label=lab)
             r.plot(g.work_per_sync, g.us_per_sync, "o", color=COLOR[solver],
@@ -97,6 +96,9 @@ def sync_cost(d, out):
     l.set_xlabel("BFS frontier width")
     l.set_ylabel("solve time (ms)")
     l.set_title("(a) same frontier width, different time")
+    r.yaxis.set_major_locator(LogLocator(base=10, subs=(1, 2, 5)))
+    r.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+    r.yaxis.set_minor_formatter(NullFormatter())
     r.set_xlabel("edges touched per synchronization")
     r.set_ylabel("time per synchronization (µs)")
     r.set_title("(b) per synchronization")
@@ -109,9 +111,9 @@ def skew(d, out):
     fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
     for solver in ["gpu-topo", "gpu-frontier"]:
         hub = b[(b.topology == "hub") & (b.solver == solver)]
-        g = hub.groupby("deg_max").agg(ratio=("ratio", gmean), rho=("rho", "median")).reset_index()
+        g = hub.groupby("deg_max").agg(ratio=("ratio", "median"), rho=("rho", "median")).reset_index()
         rm = b[(b.topology == "rmat") & (b.solver == solver)]
-        rg = rm.groupby("relabel").agg(ratio=("ratio", gmean), rho=("rho", "median"),
+        rg = rm.groupby("relabel").agg(ratio=("ratio", "median"), rho=("rho", "median"),
                                        deg_max=("deg_max", "first"))
         for ax, x in zip(axes, ["deg_max", "rho"]):
             ax.plot(g[x], g.ratio, "o-", color=COLOR[solver], label=f"{solver} (planted hub)")
@@ -119,12 +121,11 @@ def skew(d, out):
     for ax in axes:
         ax.axhline(1, color="k", lw=0.8)
         log2_axes(ax)
-    axes[1].axvline(1, color="k", lw=0.8, ls=":")
     axes[0].set_xlabel("largest degree")
     axes[0].set_ylabel("solve time relative to gpu-edge")
     axes[0].set_title("(a) by largest degree")
-    axes[1].set_xlabel("span index ρ")
-    axes[1].set_title("(b) by span index")
+    axes[1].set_xlabel("ρ, time to walk the hub / time of the rest of a round")
+    axes[1].set_title("(b) by ρ")
     axes[0].legend()
     fig.savefig(out / "skew.png")
     plt.close(fig)
@@ -133,25 +134,25 @@ def skew(d, out):
 def weights(d, out):
     c = d["weights"]
     order = ["unit", "logD1", "logD2", "logD4", "logD6"]
-    ticks = ["unit", "1-10", "1-10²", "1-10⁴", "1-10⁶"]
+    ticks = ["unit", "1 to 10", "1 to 10²", "1 to 10⁴", "1 to 10⁶"]
     fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
     for ax, topo, title in [(axes[0], "uniform", "(a) uniform, n = 2^20"),
                             (axes[1], "grid", "(b) 1024 x 1024 grid")]:
         g = c[c.topology == topo].groupby("wlabel").agg(
-            best=("time_ratio_best_delta", gmean), heur=("time_ratio_heuristic", gmean),
-            work=("work_ratio", gmean)).reindex(order)
+            best=("time_ratio_best_delta", "median"), heur=("time_ratio_heuristic", "median"),
+            work=("work_ratio", "median")).reindex(order)
         x = np.arange(len(order))
         ax.plot(x, g.best, "o-", color="C0", label="time ratio, best Δ")
         ax.plot(x, g.heur, "o--", color="C0", mfc="none", label="time ratio, default Δ")
-        ax.plot(x, g.work, "s-", color="C7", label="edges-touched ratio")
+        ax.plot(x, g.work, "s-", color="C7", label="edges touched ratio")
         ax.axhline(1, color="k", lw=0.8)
         ax.set_yscale("log", base=2)
         ax.yaxis.set_major_formatter(times)
         ax.set_xticks(x)
         ax.set_xticklabels(ticks)
-        ax.set_xlabel("log-uniform weight range")
+        ax.set_xlabel("log uniform weights")
         ax.set_title(title)
-    axes[0].set_ylabel("gpu-frontier / gpu-nearfar")
+    axes[0].set_ylabel("gpu-frontier over gpu-nearfar")
     axes[0].legend()
     fig.savefig(out / "weights.png")
     plt.close(fig)
@@ -168,24 +169,27 @@ def scaling(d, out):
     l.axhline(1, color="k", lw=0.8)
     log2_axes(l)
     l.set_xlabel("vertices")
-    l.set_ylabel("resident speedup, GPU / CPU")
+    l.set_ylabel("resident speedup (CPU time / GPU time)")
     l.set_title("(a) speedup vs size")
     l.legend()
 
     u = e[(e.topology == "uniform") & (e.run_cache == "warm")]
-    for solver in ["gpu-frontier", "delta-omp", "dial"]:
+    for solver in ["gpu-frontier", "gpu-nearfar", "delta-omp"]:
         g = u[u.solver == solver].groupby("working_set_bytes").ns_per_touched_edge.median()
         r.plot(g.index / 2 ** 20, g.values, "o-", color=COLOR[solver], label=solver)
     for mb, name in [(36, "CPU L3 (36 MB)"), (72, "GPU L2 (72 MB)")]:
         r.axvline(mb, color="k", lw=0.8, ls=":")
-        r.text(mb * 1.05, 0.5, name, rotation=90, va="center", fontsize=8,
+        r.text(mb * 1.05, 0.97, name, rotation=90, va="top", fontsize=8,
                transform=r.get_xaxis_transform())
     r.set_xscale("log", base=2)
     r.set_yscale("log")
+    r.yaxis.set_major_locator(LogLocator(base=10, subs=(1, 2, 5)))
+    r.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+    r.yaxis.set_minor_formatter(NullFormatter())
     r.set_xlabel("working set (MB)")
     r.set_ylabel("ns per touched edge")
     r.set_title("(b) cost per edge, uniform graphs")
-    r.legend(loc="lower right")
+    r.legend(loc="upper left", bbox_to_anchor=(1.01, 1))
     fig.savefig(out / "scaling.png")
     plt.close(fig)
 
@@ -208,9 +212,9 @@ def time_breakdown(d, out):
         ax.barh(names, share, left=left, color=color, label=name)
         left += share
     for i, r in g.iterrows():
-        ax.text(1.02, i, f"{r.wall_ms:.1f} ms (CPU {cpu[r.graph_id]:.1f})", va="center", fontsize=8)
+        ax.text(1.02, i, f"{r.wall_ms:.1f} ms, best CPU {cpu[r.graph_id]:.1f} ms", va="center", fontsize=8)
     ax.set_xlim(0, 1)
-    ax.set_xlabel("fraction of one-shot GPU time")
+    ax.set_xlabel("fraction of one shot GPU time")
     ax.invert_yaxis()
     ax.grid(axis="y", visible=False)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=4)

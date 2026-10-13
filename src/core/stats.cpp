@@ -49,31 +49,9 @@ std::vector<int> component_ids(const Graph& g, int* count) {
     return id;
 }
 
-GraphStats graph_stats(const Graph& g) {
-    GraphStats s;
-    s.n = g.n;
-    s.m = g.num_edges();
-    if (g.n == 0) return s;
-    for (int u = 0; u < g.n; ++u) s.deg_max = std::max(s.deg_max, g.degree(u));
-
-    std::vector<int> comp = component_ids(g, &s.components);
-    s.giant_frac = double(std::count(comp.begin(), comp.end(), 0)) / g.n;
-
-    if (!g.weights.empty()) {
-        auto mm = std::minmax_element(g.weights.begin(), g.weights.end());
-        s.w_min = *mm.first;
-        s.w_max = *mm.second;
-    }
-    return s;
-}
-
-SourceStats source_stats(const Graph& g, int source, const RefResult& ref,
-                         const std::vector<int>& comp) {
+SourceStats source_stats(const Graph& g, int source, const RefResult& ref) {
     SourceStats s;
     s.source = source;
-    if (g.n == 0) return s;
-    s.source_degree = g.degree(source);
-    s.in_giant = !comp.empty() && comp[source] == 0;
 
     std::vector<char> seen(g.n, 0);
     std::vector<int> cur{source}, next;
@@ -81,11 +59,9 @@ SourceStats source_stats(const Graph& g, int source, const RefResult& ref,
     double sum = 0.0, sumsq = 0.0;
     while (!cur.empty()) {
         double f = double(cur.size());
-        s.bfs_frontier_max = std::max<int>(s.bfs_frontier_max, int(cur.size()));
         sum += f;
         sumsq += f * f;
         s.bfs_levels++;
-
         next.clear();
         for (int u : cur) {
             for (int i = g.offsets[u]; i < g.offsets[u + 1]; ++i) {
@@ -97,18 +73,14 @@ SourceStats source_stats(const Graph& g, int source, const RefResult& ref,
         }
         cur.swap(next);
     }
-    s.bfs_frontier_wmean = sum > 0 ? sumsq / sum : 0.0;
+    s.bfs_frontier_wmean = sumsq / sum;
 
-    double hop_sum = 0.0;
     for (int u = 0; u < g.n; ++u) {
         if (ref.dist[u] == kInf) continue;
         s.reached++;
         s.m_reached += g.degree(u);
         s.sp_depth_max = std::max(s.sp_depth_max, ref.hops[u]);
-        hop_sum += ref.hops[u];
-        s.max_dist = std::max<int64_t>(s.max_dist, ref.dist[u]);
     }
-    s.sp_depth_mean = s.reached ? hop_sum / s.reached : 0.0;
     return s;
 }
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <random>
@@ -40,11 +41,17 @@ bool gpu_available() {
     return yes;
 }
 
-// Checks every registered solver against `want`. delta 0 means the default.
+bool uses_delta(const std::string& name) {
+    return name == "delta" || name == "delta-omp" || name == "gpu-nearfar";
+}
+
+// Checks every registered solver against `want`. With a forced delta, only the
+// solvers that use one.
 void compare_all(const Graph& g, int source, const std::vector<Weight>& want,
                  int delta = 0) {
     for (const auto& entry : solver_table()) {
         if (entry.device == "gpu" && !gpu_available()) continue;
+        if (delta > 0 && !uses_delta(entry.name)) continue;
 
         auto solver = entry.make();
         if (delta > 0) solver->set_delta(delta);
@@ -225,6 +232,7 @@ void test_contention() {
     Graph g = build_csr(el);
     // Too big for the oracle.
     std::vector<Weight> want = reference_dijkstra(g, 0).dist;
+    compare_all(g, 0, want);
     for (int i = 0; i < 5; ++i) compare_all(g, 0, want, 1);
 
     g_case = "contention_competing_paths";
@@ -240,6 +248,7 @@ void test_contention() {
     }
     Graph rg = build_csr(race);
     std::vector<Weight> ref = reference_dijkstra(rg, 0).dist;
+    compare_all(rg, 0, ref);
     for (int delta : {1, 2, 5}) {
         for (int i = 0; i < 3; ++i) compare_all(rg, 0, ref, delta);
     }
@@ -273,17 +282,6 @@ void test_csr() {
     }
     check(threw, "out of range endpoint should throw");
 
-    g_case = "dedup";
-    EdgeList dups;
-    dups.n = 3;
-    dups.add(0, 1, 9);
-    dups.add(0, 1, 2);
-    dups.add(1, 2, 4);
-    dedup(dups);
-    check_eq(int64_t(dups.size()), 2, "kept edges");
-    Graph dg = build_csr(dups);
-    check_eq(dg.weights[0], 2, "dedup keeps the lighter parallel edge");
-
     g_case = "negative_weight";
     EdgeList neg;
     neg.n = 2;
@@ -297,27 +295,35 @@ void test_csr() {
     check(threw, "negative weight should be rejected");
 }
 
+int max_degree(const Graph& g) {
+    int d = 0;
+    for (int u = 0; u < g.n; ++u) d = std::max(d, g.degree(u));
+    return d;
+}
+
+int count_components(const Graph& g) {
+    int count = 0;
+    component_ids(g, &count);
+    return count;
+}
+
 SourceStats stats_from(const Graph& g, int source) {
-    return source_stats(g, source, reference_dijkstra(g, source), component_ids(g));
+    return source_stats(g, source, reference_dijkstra(g, source));
 }
 
 void test_stats() {
     g_case = "stats";
     Graph st = build_csr(star(100, 1));
-    GraphStats s = graph_stats(st);
-    check_eq(s.deg_max, 99, "star hub degree");
-    check_eq(s.components, 1, "star components");
+    check_eq(count_components(st), 1, "star components");
 
     SourceStats chain_from_end = stats_from(build_csr(chain(50, 1)), 0);
     check_eq(chain_from_end.bfs_levels, 50, "chain levels");
-    check_eq(chain_from_end.bfs_frontier_max, 1, "chain frontier width");
     check_eq(chain_from_end.reached, 50, "chain reached");
     check_eq(chain_from_end.sp_depth_max, 49, "chain shortest-path depth");
     check_eq(chain_from_end.m_reached, 98, "chain useful arcs");
 
     SourceStats star_from_hub = stats_from(st, 0);
     check_eq(star_from_hub.bfs_levels, 2, "star levels");
-    check_eq(star_from_hub.bfs_frontier_max, 99, "star frontier width");
 
     SourceStats cut = stats_from(build_csr(chain(50, 1)), 25);
     check_eq(cut.bfs_levels, 26, "chain levels from the middle");
@@ -327,7 +333,7 @@ void test_stats() {
     island.add(0, 1, 1);
     Graph ig = build_csr(island);
     check_eq(stats_from(ig, 0).reached, 2, "reached");
-    check_eq(graph_stats(ig).components, 9, "components");
+    check_eq(count_components(ig), 9, "components");
 
     // A heavy direct edge and a light two-hop path: the shortest path takes
     // two hops even though BFS reaches the target in one.
@@ -340,7 +346,6 @@ void test_stats() {
     SourceStats t = stats_from(build_csr(tri), 0);
     check_eq(t.sp_depth_max, 2, "weighted hop depth");
     check_eq(t.bfs_levels, 2, "bfs levels");
-    check_eq(t.max_dist, 2, "max distance");
 }
 
 void test_reference() {
@@ -358,47 +363,28 @@ void test_reference() {
 }
 
 void test_io() {
-    g_case = "io_text";
-    const std::string path = "/tmp/sssp_test_io.txt";
+    g_case = "io_binary";
+    const std::string bin = "/tmp/sssp_test_io.bin";
     EdgeList el;
     el.n = 4;
     el.add(0, 1, 3);
     el.add(1, 2, 4);
     el.add(2, 3, 5);
-    write_edge_list(path, el);
-    Graph g = load_graph(path);
-    check_eq(g.n, 4, "n");
-    check_eq(g.num_edges(), 3, "m");
-    check_eq(g.max_weight(), 5, "max weight");
-
-    g_case = "io_unweighted";
-    const std::string unw = "/tmp/sssp_test_unweighted.txt";
-    FILE* f = std::fopen(unw.c_str(), "w");
-    std::fputs("# a comment\n0 1\n1 2\n2 3\n", f);
-    std::fclose(f);
-    Graph u = load_graph(unw);
-    check_eq(u.num_edges(), 3, "no edge swallowed by a phantom header");
-    check_eq(u.max_weight(), 1, "default weight");
-
-    g_case = "io_binary";
-    const std::string bin = "/tmp/sssp_test_io.bin";
     Graph out = build_csr(el);
     out.meta.set("topology", "test");
     out.meta.set("seed", "42");
     save_graph(bin, out);
     Graph b = load_graph(bin);
-    check_eq(b.n, g.n, "n");
-    check_eq(b.num_edges(), g.num_edges(), "m");
-    check(b.offsets == g.offsets && b.targets == g.targets &&
-              b.weights == g.weights,
+    check(b.n == out.n && b.offsets == out.offsets && b.targets == out.targets &&
+              b.weights == out.weights,
           "binary round trip");
     check(b.meta.get("seed") == "42" && b.meta.get("topology") == "test",
-          "provenance survives the round trip");
+          "parameters survive the round trip");
     check(graph_hash(b) == graph_hash(out), "hash stable across the round trip");
 
     g_case = "io_bad_magic";
     const std::string junk = "/tmp/sssp_test_junk.bin";
-    f = std::fopen(junk.c_str(), "wb");
+    FILE* f = std::fopen(junk.c_str(), "wb");
     std::fputs("not a graph at all, really", f);
     std::fclose(f);
     bool threw = false;
@@ -425,8 +411,6 @@ void test_io() {
     }
     check(threw, "a row with shifted columns should throw");
 
-    std::remove(path.c_str());
-    std::remove(unw.c_str());
     std::remove(bin.c_str());
     std::remove(junk.c_str());
     std::remove(csv.c_str());
@@ -465,16 +449,16 @@ void test_generators() {
     Graph natural_rmat = [&] { GenSpec x = r; x.relabel = false; return generate(x); }();
     Graph relabeled = generate(r);
     check_eq(relabeled.num_edges(), natural_rmat.num_edges(), "relabel keeps the arcs");
-    check_eq(graph_stats(relabeled).deg_max, graph_stats(natural_rmat).deg_max,
+    check_eq(max_degree(relabeled), max_degree(natural_rmat),
              "relabel keeps the degrees");
-    check(graph_stats(natural_rmat).deg_max == natural_rmat.degree(0) ||
+    check(max_degree(natural_rmat) == natural_rmat.degree(0) ||
               natural_rmat.degree(0) > 10 * natural_rmat.avg_degree(),
           "unpermuted rmat puts a hub at vertex 0");
 
     g_case = "gen_no_spanning_tree";
     Graph empty = generate(spec("uniform", 1000, 0));
     check_eq(empty.num_edges(), 0, "no edges were added");
-    check_eq(graph_stats(empty).components, 1000, "every vertex is its own component");
+    check_eq(count_components(empty), 1000, "every vertex is its own component");
 
     g_case = "gen_grid_depth";
     GenSpec gs = spec("grid", 0, 0);
@@ -501,9 +485,9 @@ void test_generators() {
     g_case = "gen_hub";
     GenSpec hs = spec("hub", 1 << 14, 4 << 14);
     hs.hub_fraction = 0.25;
-    GraphStats hst = graph_stats(generate(hs));
-    check(hst.deg_max >= (1 << 14) - 1 - 64 && hst.deg_max <= (1 << 14),
-          "hub degree tracks the fraction, got " + std::to_string(hst.deg_max));
+    int hub_degree = max_degree(generate(hs));
+    check(hub_degree >= (1 << 14) - 1 - 64 && hub_degree <= (1 << 14),
+          "hub degree tracks the fraction, got " + std::to_string(hub_degree));
 }
 
 // On unit weights the counters are exact.
@@ -528,12 +512,6 @@ void test_counters() {
     check_eq(f.counters.edges_touched, st.m_reached, "gpu-frontier edges");
     check_eq(f.counters.iterations, st.bfs_levels, "gpu-frontier rounds");
     check_eq(f.counters.host_syncs, st.bfs_levels, "one blocking sync per round");
-
-    frontier->release();
-    frontier->set_counters(false);
-    Run off = frontier->run(g, src);
-    check_eq(off.counters.edges_touched, 0, "device counters off");
-    check(off.dist == f.dist, "counters do not change the answer");
 
     auto topo = find_solver("gpu-topo")->make();
     Run t = topo->run(g, src);

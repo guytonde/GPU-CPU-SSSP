@@ -33,28 +33,25 @@ namespace {
 
 // Above n*m of this, only the reference Dijkstra checks the results.
 constexpr int64_t kOracleWork = 200000000;
+// Seeds source sampling and the solver order.
+constexpr uint64_t kSeed = 1;
 
 struct Options {
     std::string graph;
     std::string experiment = "adhoc";
-    std::string out = "results/raw/adhoc";
+    std::string out = "results/adhoc";
     std::string mode = "oneshot";
-    std::vector<int> explicit_sources;
     int sources = 8;
     int queries = 0;
     int reps = 5;
     int warmup = 1;
-    int delta = 0;
     double delta_scale = 0.0;
     int threads = 0;
     std::string affinity_label = "default";
-    uint64_t seed = 1;
-    bool shuffle = true;
     std::string cache = "warm";
-    bool counters = true;
     bool instrument = false;
     bool preheat = true;
-    int oracle = -1;
+    bool oracle = true;
     std::string only;
     bool quiet = false;
     bool list = false;
@@ -68,27 +65,22 @@ Runs the chosen solvers on one graph and writes raw per-execution samples to
 <out>/<run_id>/{runs,graphs,sources,samples}.csv (and batch.csv in batch mode).
 
   --experiment X     label written to runs.csv (default adhoc)
-  --out DIR          parent directory for the run directory (default results/raw/adhoc)
+  --out DIR          parent directory for the run directory (default results/adhoc)
   --mode M           oneshot  every sample pays allocation, upload and free
                      resident sessions of --queries sequential queries, one upload each
                      batch    CPU serial solvers answer --queries sources concurrently
   --sources N        sources to sample (default 8); from meta "sources" if the graph
                      has them, otherwise uniformly from the giant component
-  --source V         use this source (repeatable); overrides sampling
   --queries K        queries per resident session / batch (default: --sources)
   --reps N           timed repetitions per source, or sessions (default 5)
   --warmup N         untimed warm-up executions per solver, recorded as warmup=1 (default 1)
-  --delta D          pin the bucket width for delta, delta-omp, gpu-nearfar
   --delta-scale X    bucket width = X * the heuristic
   --threads N        OpenMP threads (default: physical cores in the affinity mask)
   --affinity-label L free-form label for the pinning in force (recorded)
-  --seed S           seed for sources and solver order (default 1)
-  --no-shuffle       run solvers in registry order
   --cache C          warm | flushed (evict CPU L3 and GPU L2 before every sample)
-  --no-counters      disable device-side work counters (to measure their cost)
   --instrument       per-kernel events; rows are flagged and excluded from timing analysis
   --no-preheat       skip the untimed pre-sample GPU warm-up
-  --oracle | --no-oracle   force the O(V*E) check on or off (default: when n*m <= 2e8)
+  --no-oracle        skip the O(V*E) check (otherwise used when n*m <= 2e8)
   --only a,b,c       run only these solvers
   --quiet            no summary table
   --list             print the solver table and exit
@@ -119,22 +111,16 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--out") o.out = next();
         else if (a == "--mode") o.mode = next();
         else if (a == "--sources") o.sources = std::stoi(next());
-        else if (a == "--source") o.explicit_sources.push_back(std::stoi(next()));
         else if (a == "--queries") o.queries = std::stoi(next());
         else if (a == "--reps") o.reps = std::stoi(next());
         else if (a == "--warmup") o.warmup = std::stoi(next());
-        else if (a == "--delta") o.delta = std::stoi(next());
         else if (a == "--delta-scale") o.delta_scale = std::stod(next());
         else if (a == "--threads") o.threads = std::stoi(next());
         else if (a == "--affinity-label") o.affinity_label = next();
-        else if (a == "--seed") o.seed = std::stoull(next());
-        else if (a == "--no-shuffle") o.shuffle = false;
         else if (a == "--cache") o.cache = next();
-        else if (a == "--no-counters") o.counters = false;
         else if (a == "--instrument") o.instrument = true;
         else if (a == "--no-preheat") o.preheat = false;
-        else if (a == "--oracle") o.oracle = 1;
-        else if (a == "--no-oracle") o.oracle = 0;
+        else if (a == "--no-oracle") o.oracle = false;
         else if (a == "--only") o.only = next();
         else if (a == "--quiet") o.quiet = true;
         else if (!a.empty() && a[0] == '-') throw std::runtime_error("unknown option " + a);
@@ -162,19 +148,13 @@ std::string make_run_id() {
     return compact + "-" + tail;
 }
 
-// Sources come from --source, the graph's meta (layer 0 of a layered graph),
-// or random vertices of the giant component.
-std::vector<int> pick_sources(const Graph& g, const std::vector<int>& comp,
-                              const Options& o, int count, std::string& policy) {
-    std::mt19937_64 rng(o.seed);
+// Sources come from the graph's meta (layer 0 of a layered graph) or are random
+// vertices of the giant component.
+std::vector<int> pick_sources(const Graph& g, const std::vector<int>& comp, int count,
+                              std::string& policy) {
+    std::mt19937_64 rng(kSeed);
     std::vector<int> pool;
-    if (!o.explicit_sources.empty()) {
-        policy = "list";
-        for (int v : o.explicit_sources) {
-            if (v < 0 || v >= g.n) throw std::runtime_error("source out of range");
-        }
-        pool = o.explicit_sources;
-    } else if (g.meta.has("sources")) {
+    if (g.meta.has("sources")) {
         policy = "meta";
         for (const auto& s : split(g.meta.get("sources"), ',')) pool.push_back(std::stoi(s));
         shuffle(pool, rng);
@@ -203,8 +183,7 @@ struct Reference {
     std::string kind;
 };
 
-Reference make_reference(const Graph& g, int source, bool oracle, SourceStats& stats,
-                         const std::vector<int>& comp) {
+Reference make_reference(const Graph& g, int source, bool oracle, SourceStats& stats) {
     RefResult rd = reference_dijkstra(g, source);
     Reference ref;
     ref.kind = "refdijkstra";
@@ -215,7 +194,7 @@ Reference make_reference(const Graph& g, int source, bool oracle, SourceStats& s
         }
         ref.kind = "oracle";
     }
-    stats = source_stats(g, source, rd, comp);
+    stats = source_stats(g, source, rd);
     ref.hash = dist_hash(rd.dist);
     ref.dist = std::move(rd.dist);
     return ref;
@@ -235,8 +214,9 @@ void flush_host_caches() {
     std::memset(junk.data(), ++fill, junk.size());
 }
 
-Row graph_row(const std::string& run_id, const std::string& path, const Graph& g,
-              const GraphStats& s) {
+Row graph_row(const std::string& run_id, const std::string& path, const Graph& g) {
+    int deg_max = 0;
+    for (int u = 0; u < g.n; ++u) deg_max = std::max(deg_max, g.degree(u));
     Row r;
     r.add("run_id", run_id)
         .add("graph_id", hex64(graph_hash(g)))
@@ -245,13 +225,9 @@ Row graph_row(const std::string& run_id, const std::string& path, const Graph& g
         .add("path", path)
         .add("n", int64_t(g.n))
         .add("m", g.num_edges())
-        .add("deg_max", int64_t(s.deg_max))
-        .add("components", int64_t(s.components))
-        .add("giant_frac", s.giant_frac)
-        .add("w_min", int64_t(s.w_min))
-        .add("w_max", int64_t(s.w_max));
+        .add("deg_max", int64_t(deg_max));
     for (const char* k : {"generator", "gen_git_sha", "gen_git_dirty", "topology",
-                          "m_requested", "m_undirected", "directed", "seed", "wseed",
+                          "m_requested", "m_undirected", "seed", "wseed",
                           "rseed", "relabel", "wdist", "wmin", "wmax", "decades", "rows",
                           "cols", "layer_width", "layer_links", "hub_fraction"}) {
         r.add(k, g.meta.get(k));
@@ -265,16 +241,11 @@ Row source_row(const std::string& run_id, const std::string& graph_id,
     r.add("run_id", run_id)
         .add("graph_id", graph_id)
         .add("source", int64_t(s.source))
-        .add("source_degree", int64_t(s.source_degree))
-        .add("in_giant", s.in_giant)
         .add("reached", s.reached)
         .add("m_reached", s.m_reached)
         .add("bfs_levels", int64_t(s.bfs_levels))
-        .add("bfs_frontier_max", int64_t(s.bfs_frontier_max))
         .add("bfs_frontier_wmean", s.bfs_frontier_wmean)
         .add("sp_depth_max", int64_t(s.sp_depth_max))
-        .add("sp_depth_mean", s.sp_depth_mean)
-        .add("max_dist", s.max_dist)
         .add("ref_kind", ref.kind)
         .add("ref_dist_hash", hex64(ref.hash));
     return r;
@@ -282,7 +253,7 @@ Row source_row(const std::string& run_id, const std::string& graph_id,
 
 struct Sample {
     std::string solver, device, session;
-    int source = 0, query_index = 0, rep = 0, order_pos = 0;
+    int source = 0, query_index = 0, rep = 0;
     bool warmup = false;
     Run run;
     double run_ms = 0.0, free_ms = 0.0;
@@ -345,11 +316,6 @@ public:
             .add("rep", int64_t(s.rep))
             .add("warmup", s.warmup)
             .add("instrumented", o_.instrument)
-            .add("order_pos", int64_t(s.order_pos))
-            .add("cache_state", o_.cache)
-            .add("threads", int64_t(s.device == "cpu" ? cpu_threads() : 0))
-            .add("counters_on", o_.counters)
-            .add("delta_used", int64_t(s.run.delta_used))
             .add("wall_ms", s.run_ms + s.free_ms)
             .add("prep_ms", t.prep_ms)
             .add("alloc_ms", t.alloc_ms)
@@ -433,19 +399,12 @@ Row run_row(const Options& o, const std::string& run_id, const std::string& grap
         .add("sources", int64_t(count))
         .add("queries", int64_t(o.queries))
         .add("source_policy", policy)
-        .add("bench_seed", int64_t(o.seed))
-        .add("order_policy", o.shuffle ? "shuffled" : "registry")
         .add("cache_state", o.cache)
-        .add("counters", o.counters)
         .add("instrument", o.instrument)
         .add("preheat", o.preheat)
         .add("threads", int64_t(cpu_threads()))
         .add("affinity_label", o.affinity_label)
-        .add("delta_forced", int64_t(o.delta))
         .add("delta_scale", o.delta_scale)
-        .add("oracle_limit", kOracleWork)
-        .add("gpu_block", int64_t(256))
-        .add("gpu_util_start_pct", int64_t(at_start.util_pct))
         .add("gpu_foreign_procs_start", int64_t(at_start.foreign_procs))
         .add("load1_start", load_start)
         .add("load1_end", finished.empty() ? std::nan("") : load1());
@@ -502,13 +461,11 @@ int main(int argc, char** argv) {
         fs::create_directories(dir);
         const std::string graph_id = hex64(graph_hash(g));
 
-        const GraphStats gs = graph_stats(g);
         const std::vector<int> comp = component_ids(g);
         const int count = o.mode == "oneshot" ? o.sources : (o.queries > 0 ? o.queries : o.sources);
         std::string policy;
-        const std::vector<int> sources = pick_sources(g, comp, o, count, policy);
-        const bool use_oracle =
-            o.oracle == 1 || (o.oracle < 0 && int64_t(g.n) * g.num_edges() <= kOracleWork);
+        const std::vector<int> sources = pick_sources(g, comp, count, policy);
+        const bool use_oracle = o.oracle && int64_t(g.n) * g.num_edges() <= kOracleWork;
 
         KeyValues host = host_environment();
         KeyValues gpu = gpu_properties();
@@ -516,7 +473,7 @@ int main(int argc, char** argv) {
         CsvWriter(dir / "runs.csv")
             .write(run_row(o, run_id, graph_id, started, "", policy, count, host, gpu,
                            at_start, load_start));
-        CsvWriter((dir / "graphs.csv").string()).write(graph_row(run_id, o.graph, g, gs));
+        CsvWriter((dir / "graphs.csv").string()).write(graph_row(run_id, o.graph, g));
 
         std::vector<const SolverEntry*> entries;
         std::vector<std::unique_ptr<Solver>> solvers;
@@ -528,12 +485,9 @@ int main(int argc, char** argv) {
             if (entry.device == "gpu" && gpus == 0) continue;
             if (o.mode == "batch" && (entry.device != "cpu" || entry.name == "delta-omp")) continue;
             auto s = entry.make();
-            if (o.delta > 0) {
-                s->set_delta(o.delta);
-            } else if (o.delta_scale > 0) {
+            if (o.delta_scale > 0) {
                 s->set_delta(std::max(1, int(std::llround(pick_delta(g) * o.delta_scale))));
             }
-            s->set_counters(o.counters);
             s->set_instrument(o.instrument);
             entries.push_back(&entry);
             solvers.push_back(std::move(s));
@@ -554,7 +508,7 @@ int main(int argc, char** argv) {
             auto it = refs.find(s);
             if (it != refs.end()) return it->second;
             SourceStats st;
-            Reference ref = make_reference(g, s, use_oracle, st, comp);
+            Reference ref = make_reference(g, s, use_oracle, st);
             source_csv.write(source_row(run_id, graph_id, st, ref));
             if (o.mode != "oneshot") ref.dist.clear();
             return refs.emplace(s, std::move(ref)).first->second;
@@ -568,7 +522,7 @@ int main(int argc, char** argv) {
         };
 
         Bench bench(o, g, run_id, dir);
-        std::mt19937_64 order_rng(o.seed + 1);
+        std::mt19937_64 order_rng(kSeed + 1);
         std::vector<size_t> order(solvers.size());
         for (size_t i = 0; i < order.size(); ++i) order[i] = i;
 
@@ -588,11 +542,10 @@ int main(int argc, char** argv) {
             for (int src : sources) {
                 const Reference& ref = reference_for(src);
                 for (int rep = 0; rep < o.reps; ++rep) {
-                    if (o.shuffle) shuffle(order, order_rng);
-                    for (size_t pos = 0; pos < order.size(); ++pos) {
-                        Sample s = bench.execute(*solvers[order[pos]], src, true);
+                    shuffle(order, order_rng);
+                    for (size_t i : order) {
+                        Sample s = bench.execute(*solvers[i], src, true);
                         s.rep = rep;
-                        s.order_pos = int(pos);
                         bench.check(s, ref);
                         bench.write(s);
                     }
@@ -602,9 +555,9 @@ int main(int argc, char** argv) {
         } else if (o.mode == "resident") {
             for (int src : sources) reference_for(src);
             for (int rep = 0; rep < o.reps; ++rep) {
-                if (o.shuffle) shuffle(order, order_rng);
-                for (size_t pos = 0; pos < order.size(); ++pos) {
-                    Solver& solver = *solvers[order[pos]];
+                shuffle(order, order_rng);
+                for (size_t i : order) {
+                    Solver& solver = *solvers[i];
                     solver.release();
                     for (int q = 0; q < int(sources.size()); ++q) {
                         const bool last = q + 1 == int(sources.size());
@@ -612,7 +565,6 @@ int main(int argc, char** argv) {
                         s.session = "s" + std::to_string(rep);
                         s.query_index = q;
                         s.rep = rep;
-                        s.order_pos = int(pos);
                         const Reference& ref = refs.at(sources[q]);
                         s.mismatches = s.hash == ref.hash ? 0 : -1;
                         recheck(s, ref);

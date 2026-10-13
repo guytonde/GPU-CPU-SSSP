@@ -34,7 +34,7 @@ double gpu_round_overhead_us(int launches, int syncs, bool memset, int iteration
     return t.ms() * 1e3 / iterations;
 }
 
-double gpu_copy_ms(size_t bytes, bool pinned, bool to_device, int reps) {
+double gpu_upload_ms(size_t bytes, bool pinned, int reps) {
     DeviceBuffer<char> dev;
     dev.alloc(bytes);
     char* host = nullptr;
@@ -51,11 +51,7 @@ double gpu_copy_ms(size_t bytes, bool pinned, bool to_device, int reps) {
     for (int rep = 0; rep < reps + 1; ++rep) {
         gpu_preheat();
         t.start();
-        if (to_device) {
-            CUDA_CHECK(cudaMemcpy(dev.get(), host, bytes, cudaMemcpyHostToDevice));
-        } else {
-            CUDA_CHECK(cudaMemcpy(host, dev.get(), bytes, cudaMemcpyDeviceToHost));
-        }
+        CUDA_CHECK(cudaMemcpy(dev.get(), host, bytes, cudaMemcpyHostToDevice));
         float x = t.stop();
         if (rep > 0) ms.push_back(x);
     }

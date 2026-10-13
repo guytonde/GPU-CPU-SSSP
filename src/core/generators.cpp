@@ -18,12 +18,12 @@ uint64_t key(int64_t u, int64_t v) { return (uint64_t(u) << 32) | uint64_t(v); }
 int key_u(uint64_t k) { return int(k >> 32); }
 int key_v(uint64_t k) { return int(k & 0xffffffffu); }
 
+// Undirected edges as sorted (min, max) keys, without self loops or duplicates.
 class Edges {
 public:
-    explicit Edges(bool directed) : directed_(directed) {}
     void add(int64_t u, int64_t v) {
         if (u == v) return;
-        if (!directed_ && u > v) std::swap(u, v);
+        if (u > v) std::swap(u, v);
         keys.push_back(key(u, v));
     }
     void finish() {
@@ -31,9 +31,6 @@ public:
         keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
     }
     std::vector<uint64_t> keys;
-
-private:
-    bool directed_;
 };
 
 // Two statements, because argument evaluation order is unspecified.
@@ -209,7 +206,7 @@ Graph generate(const GenSpec& s) {
     if (n < 1 || n > INT32_MAX) throw std::runtime_error("n out of range");
 
     std::mt19937_64 rng(s.seed);
-    Edges edges(s.directed);
+    Edges edges;
     std::vector<int> sources;
 
     const std::string& t = s.topology;
@@ -217,7 +214,6 @@ Graph generate(const GenSpec& s) {
     else if (t == "rmat") gen_rmat(edges, n, s.m, rng);
     else if (t == "grid") gen_grid(edges, rows, cols);
     else if (t == "geometric") gen_geometric(edges, n, s.m, rng);
-    else if (t == "chain") for (int64_t i = 0; i + 1 < n; ++i) edges.add(i, i + 1);
     else if (t == "star") for (int64_t i = 1; i < n; ++i) edges.add(0, i);
     else if (t == "layered") sources = gen_layered(edges, n, s.layer_width, s.layer_links, rng);
     else if (t == "hub") gen_hub(edges, n, s.m, s.hub_fraction, rng);
@@ -245,7 +241,7 @@ Graph generate(const GenSpec& s) {
     for (size_t i = 0; i < edges.keys.size(); ++i) {
         int a = label[key_u(edges.keys[i])], b = label[key_v(edges.keys[i])];
         el.add(a, b, w[i]);
-        if (!s.directed) el.add(b, a, w[i]);
+        el.add(b, a, w[i]);
     }
     Graph g = build_csr(el);
 
@@ -257,7 +253,6 @@ Graph generate(const GenSpec& s) {
     meta.set("n", std::to_string(n));
     meta.set("m_requested", std::to_string(s.m));
     meta.set("m_undirected", std::to_string(edges.keys.size()));
-    meta.set("directed", s.directed ? "1" : "0");
     meta.set("seed", std::to_string(s.seed));
     meta.set("wseed", std::to_string(wseed));
     meta.set("rseed", std::to_string(rseed));

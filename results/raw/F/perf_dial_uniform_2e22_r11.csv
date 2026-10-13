@@ -1,12 +1,12 @@
-# started on Sun Sep 27 15:46:56 2026
+# started on Sun Oct  4 22:00:36 2026
 
-10877575851,ns,duration_time,10877575851,100.00,1.006,G/sec
-10808.79,msec,task-clock,10808789851,100.00,0.994,CPUs utilized
-42377955815,,cpu_atom/cycles/,24521526,0.00,3.921,GHz
-62436450510,,cpu_core/cycles/,10784268325,99.00,5.776,GHz
-26017269771,,cpu_atom/instructions/,24521526,0.00,0.61,insn per cycle
-23279725310,,cpu_core/instructions/,10784268325,99.00,0.37,insn per cycle
-8374,,cpu_atom/LLC-load-misses/,24521526,0.00,,
-282870607,,cpu_core/LLC-load-misses/,10784268325,99.00,,
-41218950,,cpu_atom/branch-misses/,24521526,0.00,,
-250164391,,cpu_core/branch-misses/,10784268325,99.00,,
+10592510019,ns,duration_time,10592510019,100.00,1.005,G/sec
+10544.77,msec,task-clock,10544771859,100.00,0.995,CPUs utilized
+41504057621,,cpu_atom/cycles/,23868435,0.00,3.936,GHz
+60949379072,,cpu_core/cycles/,10520903424,99.00,5.780,GHz
+24327580120,,cpu_atom/instructions/,23868435,0.00,0.59,insn per cycle
+21785772765,,cpu_core/instructions/,10520903424,99.00,0.36,insn per cycle
+29157,,cpu_atom/LLC-load-misses/,23868435,0.00,,
+275915755,,cpu_core/LLC-load-misses/,10520903424,99.00,,
+40761065,,cpu_atom/branch-misses/,23868435,0.00,,
+234677732,,cpu_core/branch-misses/,10520903424,99.00,,

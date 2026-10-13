@@ -305,7 +305,6 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("experiments", nargs="*", default=["all"])
     ap.add_argument("--quick", action="store_true", help="tiny sizes; writes to results/raw-quick")
-    ap.add_argument("--keep-graphs", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--max-wait", type=int, default=240, help="minutes to wait for a busy GPU")
     args = ap.parse_args()
@@ -375,8 +374,7 @@ def main():
                 with open(done_file, "a") as f:
                     f.write(step.key(b) + "\n")
                 log(f"{step.exp} {step.name}: {' '.join(b)} ({t:.1f}s)")
-        if not args.keep_graphs:
-            g.unlink(missing_ok=True)
+        g.unlink(missing_ok=True)
     log("done")
 
 

@@ -1,0 +1,2 @@
+run_id,graph_id,topo_hash,weights_hash,path,n,m,deg_max,generator,gen_git_sha,gen_git_dirty,topology,m_requested,m_undirected,seed,wseed,rseed,relabel,wdist,wmin,wmax,decades,rows,cols,layer_width,layer_links,hub_fraction
+20261005T022813Z-ac95,2ac1f074dd041464,4f710126879d2a5a,575da8f8d51bc1d0,/home/jacob/Documents/GPU-CPU-SSSP/graphs/study/E_grid_n2e18.bin,262144,1046528,4,gen_graph/2,d95e4d2dd662031ca0ae293b49f89a743505e66f,1,grid,0,523264,1,11400714819323198484,14029467366897019726,1,uniform,1,100,,512,512,,,

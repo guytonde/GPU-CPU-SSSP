@@ -34,7 +34,6 @@ struct Run {
     std::vector<Weight> dist;
     Timing timing;
     Counters counters;
-    int delta_used = 0;
 };
 
 class Solver {
@@ -45,8 +44,6 @@ public:
     virtual Run run(const Graph& g, int source) = 0;
 
     virtual void set_delta(int) {}
-    // GPU work counters cost an atomic per vertex, so they can be turned off.
-    virtual void set_counters(bool) {}
     // An event pair around every kernel, which changes the timing.
     virtual void set_instrument(bool) {}
     // GPU solvers keep the graph on the device between runs until this.

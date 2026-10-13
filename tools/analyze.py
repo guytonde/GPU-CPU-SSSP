@@ -17,6 +17,7 @@ from scipy.optimize import nnls
 ROOT = Path(__file__).resolve().parent.parent
 GPU = ["gpu-frontier", "gpu-nearfar"]
 CPU = ["dijkstra", "dial", "delta", "delta-omp"]
+EXPERIMENTS = ["C0", "A", "B", "C", "D", "E", "HO", "T", "F"]
 FULL = ["A", "C", "E", "HO"]  # experiments with every main CPU and GPU solver
 MODELS = {"syncs + edges": ["host_syncs", "edges_touched"],
           "syncs + vertices + edges": ["host_syncs", "edges_touched", "vertices_expanded"]}
@@ -25,9 +26,10 @@ MODELS = {"syncs + edges": ["host_syncs", "edges_touched"],
 # loading
 
 def read_all(raw, name):
-    frames = [pd.read_csv(f, low_memory=False)
-              for f in sorted(glob.glob(str(raw / "**" / f"{name}.csv"), recursive=True))
-              if Path(f).stat().st_size > 0]
+    """Reads every name.csv under the study's experiment folders, so ad hoc runs are ignored."""
+    files = sorted(f for exp in EXPERIMENTS
+                   for f in glob.glob(str(raw / exp / "**" / f"{name}.csv"), recursive=True))
+    frames = [pd.read_csv(f, low_memory=False) for f in files if Path(f).stat().st_size > 0]
     frames = [f for f in frames if len(f)]
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
@@ -163,8 +165,6 @@ def constants(calib):
     k = {}
     rounds = calib[calib.bench == "round_overhead"].groupby("param").value.median()
     k["alpha_frontier_us"] = rounds.get("frontier_round")
-    k["alpha_nearfar_us_per_sync"] = rounds.get("nearfar_inner") / 2
-    k["alpha_sync_us"] = rounds.get("sync_only")
     for label in ["uniform_deg8", "grid_deg4"]:
         sweep = calib[calib.bench == f"frontier_round_{label}"]
         kernel = sweep[sweep.unit == "kernel_us"].set_index("param_value").value.sort_index()
@@ -176,12 +176,10 @@ def constants(calib):
         k[f"cost_per_vertex_{label}_ns"] = per_vertex * 1e3
     for name, v in calib[calib.bench == "hub_latency"].set_index("param").value.items():
         k[f"lambda_{name}_ns"] = v
-    copy = calib[calib.bench == "copy"]
-    for (name, size), ms in copy.groupby(["param", "param_value"]).value.median().items():
-        if size in (2 ** 20, 2 ** 24, copy.param_value.max()):
-            k[f"{name}_{round(size / 2 ** 20)}MB_GBps"] = size / (ms * 1e-3) / 1e9
-    omp = calib[calib.bench == "omp_region"].groupby("param_value").value.median()
-    k["omp_region_24_threads_us"] = omp.get(24)
+    for (name, size), ms in calib[calib.bench == "copy"].groupby(["param", "param_value"]).value.median().items():
+        k[f"{name}_{round(size / 2 ** 20)}MB_GBps"] = size / (ms * 1e-3) / 1e9
+    for threads, us in calib[calib.bench == "omp_region"].groupby("param_value").value.median().items():
+        k[f"omp_region_{int(threads)}_threads_us"] = us
     return k
 
 
@@ -210,7 +208,7 @@ def per_source(med, sources, graphs, k):
             "U_ms": r.U_ms, "S1": c.wall_ms / o.wall_ms, "Sinf": c.q_ms / r.q_ms,
             "kappa": (c.q_ms - r.q_ms) / r.U_ms if r.U_ms > 0 else np.nan,
             "upload_over_cpu_query": r.U_ms / c.q_ms,
-            "iota": r.edges_touched / useful, "delta": r.host_syncs / depth,
+            "iota": r.edges_touched / useful,
             "c_cpu_ns": c.q_ms * 1e6 / useful, "host_syncs": r.host_syncs,
             "edges_touched": r.edges_touched, "vertices_expanded": r.vertices_expanded,
             "Sinf_model": c.q_ms / q_model,
@@ -240,11 +238,11 @@ def per_graph(ps):
         r["sources"] = len(grp)
         for col in ["S1", "Sinf"]:
             r[f"log2_{col}"], r[f"log2_{col}_lo"], r[f"log2_{col}_hi"] = boot_ci(np.log2(grp[col]), np.mean)
-        r["kappa"], r["kappa_lo"], r["kappa_hi"] = boot_ci(grp.kappa, np.median)
+        r["kappa"] = grp.kappa.median()
         r["Kstar"] = kstar(r["kappa"])
         r["log2_Sinf_model"] = float(np.median(np.log2(grp.Sinf_model)))
         for col in ["Pi", "sp_depth", "bfs_frontier_wmean", "q_cpu_ms", "q_gpu_ms", "U_ms",
-                    "upload_over_cpu_query", "iota", "delta", "c_cpu_ns"]:
+                    "upload_over_cpu_query", "iota", "c_cpu_ns"]:
             r[col] = grp[col].median()
         r["best_cpu"], r["best_gpu"] = grp.best_cpu.mode()[0], grp.best_gpu.mode()[0]
         rows.append(r)
@@ -547,7 +545,7 @@ def main():
         "\n## Serial CPU solvers pinned to one P core\n", md_table(place),
         "\n## Per graph\n",
         md_table(pg.assign(S1=2 ** pg.log2_S1, Sinf=2 ** pg.log2_Sinf)
-                 [["experiment", "label", "Pi", "best_cpu", "best_gpu", "S1", "Sinf", "Kstar", "iota", "delta"]]
+                 [["experiment", "label", "Pi", "best_cpu", "best_gpu", "S1", "Sinf", "Kstar", "iota"]]
                  .sort_values(["experiment", "label"])),
     ]
     (out / "summary.md").write_text("\n".join(parts) + "\n")

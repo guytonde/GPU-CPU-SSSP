@@ -9,7 +9,7 @@ namespace sssp {
 namespace {
 
 // One warp per frontier vertex. `queued` keeps a vertex from entering the next
-// queue twice. `work`, when set, counts adjacency entries read.
+// queue twice. `work`, when not null, counts adjacency entries read.
 __global__ void expand(const int* __restrict__ offsets,
                        const int* __restrict__ targets,
                        const Weight* __restrict__ weights,
@@ -50,7 +50,6 @@ class GpuFrontier : public Solver {
 public:
     const char* name() const override { return "gpu-frontier"; }
     const char* device() const override { return "gpu"; }
-    void set_counters(bool on) override { counters_ = on; }
     void set_instrument(bool on) override { clock_.enable(on); }
 
     Run run(const Graph& g, int source) override {
@@ -68,8 +67,7 @@ public:
             r.timing.alloc_ms += alloc.ms();
         }
         const DeviceCsr& d = csr_.get();
-        unsigned long long* work = counters_ ? d_work_.get() : nullptr;
-        if (work) d_work_.fill_zero();
+        d_work_.fill_zero();
         clock_.reset();
 
         GpuTimer solve;
@@ -94,7 +92,7 @@ public:
             clock_.start();
             expand<<<grid_for(int64_t(frontier) * kWarp), kBlock>>>(
                 d.offsets.get(), d.targets.get(), d.weights.get(), d_dist_.get(),
-                cur, frontier, next, d_size_.get(), d_queued_.get(), work);
+                cur, frontier, next, d_size_.get(), d_queued_.get(), d_work_.get());
             clock_.stop();
 
             d_size_.copy_to(&frontier, 1);
@@ -109,7 +107,7 @@ public:
         if (clock_.enabled()) r.timing.kernel_ms = clock_.total_ms();
 
         r.timing.d2h_ms = download_result(d_dist_, r.dist, g.n);
-        if (work) c.edges_touched = read_counter(d_work_);
+        c.edges_touched = read_counter(d_work_);
         return r;
     }
 
@@ -124,7 +122,6 @@ public:
     }
 
 private:
-    bool counters_ = true;
     KernelClock clock_;
     ResidentCsr csr_;
     DeviceBuffer<Weight> d_dist_;

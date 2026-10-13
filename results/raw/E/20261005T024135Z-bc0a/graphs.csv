@@ -1,0 +1,2 @@
+run_id,graph_id,topo_hash,weights_hash,path,n,m,deg_max,generator,gen_git_sha,gen_git_dirty,topology,m_requested,m_undirected,seed,wseed,rseed,relabel,wdist,wmin,wmax,decades,rows,cols,layer_width,layer_links,hub_fraction
+20261005T024135Z-bc0a,2bd039ee44b12d2a,2de4936e03722788,cabc0ec8516d5ada,/home/jacob/Documents/GPU-CPU-SSSP/graphs/study/E_uniform_n2e24.bin,16777216,134217692,28,gen_graph/2,d95e4d2dd662031ca0ae293b49f89a743505e66f,1,uniform,67108864,67108846,1,11400714819323198484,14029467366897019726,1,uniform,1,100,,,,,,

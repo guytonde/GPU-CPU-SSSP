@@ -58,23 +58,15 @@ struct EdgeList {
 // Each adjacency list comes out sorted by (target, weight), so the result does
 // not depend on the order of the input edges.
 Graph build_csr(const EdgeList& el);
-void dedup(EdgeList& el);
 
 // Throws on a negative weight.
 void check_weights(const Graph& g);
 
-// .bin files hold the CSR and its Meta. Any other path is a text edge list,
-// one "u v [w]" per line, with w defaulting to 1 and # lines ignored.
+// Binary graph files, holding the CSR and its Meta.
 Graph load_graph(const std::string& path);
 void save_graph(const std::string& path, const Graph& g);
 
-EdgeList read_edge_list(const std::string& path);
-void write_edge_list(const std::string& path, const EdgeList& el);
-Graph read_binary(const std::string& path);
-void write_binary(const std::string& path, const Graph& g);
-
 // topo_hash ignores the weights, so graphs that differ only in weights share it.
-uint64_t hash_words(const void* data, size_t bytes, uint64_t seed);
 uint64_t topo_hash(const Graph& g);
 uint64_t weights_hash(const Graph& g);
 uint64_t graph_hash(const Graph& g);

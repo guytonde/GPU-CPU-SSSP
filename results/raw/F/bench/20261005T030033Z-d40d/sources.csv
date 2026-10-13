@@ -1,0 +1,2 @@
+run_id,graph_id,source,reached,m_reached,bfs_levels,bfs_frontier_wmean,sp_depth_max,ref_kind,ref_dist_hash
+20261005T030033Z-d40d,546ebf08dc181db3,561519,4192884,33554380,11,1747781.4,31,refdijkstra,8062a200dc12272a
